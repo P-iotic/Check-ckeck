@@ -7,6 +7,26 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Add these security middleware to your server.js
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// Add to your server.js after requiring dependencies
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+// Add CSRF protection for forms
+const csurf = require('csurf');
+app.use(csurf());
+
+// Then make sure to include the CSRF token in your forms
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -172,4 +192,106 @@ app.post('/api/orders', (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Add these endpoints to your server.js file
+
+// Get user by ID
+app.get('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  db.get('SELECT id, name, email, phone FROM users WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(row);
+  });
+});
+
+// Update user
+app.post('/api/users/update', (req, res) => {
+  const { id, name, email, phone, password } = req.body;
+  
+  let query, params;
+  if (password) {
+    query = 'UPDATE users SET name = ?, email = ?, phone = ?, password = ? WHERE id = ?';
+    params = [name, email, phone, password, id];
+  } else {
+    query = 'UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?';
+    params = [name, email, phone, id];
+  }
+  
+  db.run(query, params, function(err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ id, name, email, phone });
+  });
+});
+
+// Delete user
+app.post('/api/users/delete', (req, res) => {
+  const { id } = req.body;
+  db.run('DELETE FROM users WHERE id = ?', [id], function(err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ success: true });
+  });
+});
+
+// Get order by ID
+app.get('/api/orders/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.get(`
+    SELECT o.*, 
+           GROUP_CONCAT(oi.product_id || ':' || oi.quantity || ':' || oi.price || ':' || p.name) as items
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    LEFT JOIN products p ON oi.product_id = p.id
+    WHERE o.id = ?
+    GROUP BY o.id
+  `, [id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (!row) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+    
+    // Parse items
+    const order = {
+      ...row,
+      items: row.items ? row.items.split(',').map(item => {
+        const [product_id, quantity, price, name] = item.split(':');
+        return {
+          id: product_id,
+          name,
+          qty: parseInt(quantity),
+          price: parseFloat(price)
+        };
+      }) : [],
+      total: parseFloat(row.total)
+    };
+    
+    res.json(order);
+  });
+});
+
+// Update order status
+app.post('/api/orders/update-status', (req, res) => {
+  const { id, status } = req.body;
+  db.run('UPDATE orders SET status = ? WHERE id = ?', [status, id], function(err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ success: true });
+  });
 });

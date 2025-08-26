@@ -683,6 +683,498 @@ async function renderReceiptPage() {
   `;
 }
 
+/********************
+ * Mobile Navigation *
+ ********************/
+function initMobileMenu() {
+  const nav = document.querySelector('.topnav');
+  const toggle = document.createElement('button');
+  toggle.className = 'menu-toggle';
+  toggle.innerHTML = '☰';
+  toggle.setAttribute('aria-label', 'Toggle menu');
+  
+  const headerInner = document.querySelector('.header-inner');
+  if (headerInner && nav) {
+    headerInner.appendChild(toggle);
+    
+    toggle.addEventListener('click', () => {
+      nav.classList.toggle('show');
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!nav.contains(e.target) && !toggle.contains(e.target)) {
+        nav.classList.remove('show');
+      }
+    });
+    
+    // Close menu on resize if it becomes desktop view
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 768) {
+        nav.classList.remove('show');
+      }
+    });
+  }
+}
+// Call this function in your bootstrapData() or similar initialization function
+
+/***********************
+ * Enhanced Checkout *
+ ***********************/
+function initEnhancedCheckout() {
+  // Add card number formatting
+  const cardNumberInput = $('#cardNumber');
+  if (cardNumberInput) {
+    cardNumberInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+      let formattedValue = '';
+      
+      for (let i = 0; i < value.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+          formattedValue += ' ';
+        }
+        formattedValue += value[i];
+      }
+      
+      e.target.value = formattedValue;
+    });
+  }
+  
+  // Add expiry date formatting
+  const expiryInput = $('#cardExpiry');
+  if (expiryInput) {
+    expiryInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      
+      if (value.length > 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+      }
+      
+      e.target.value = value;
+    });
+  }
+  
+  // Add real-time validation
+  const inputs = document.querySelectorAll('#checkoutForm .input');
+  inputs.forEach(input => {
+    input.addEventListener('blur', function() {
+      validateField(this);
+    });
+  });
+}
+
+function validateField(field) {
+  const errorElement = document.getElementById(`e${field.id.charAt(0).toUpperCase() + field.id.slice(1)}`);
+  if (!errorElement) return;
+  
+  let isValid = true;
+  let errorMessage = '';
+  
+  switch(field.id) {
+    case 'chkName':
+      isValid = field.value.trim().length >= 2;
+      errorMessage = isValid ? '' : 'Name must be at least 2 characters';
+      break;
+    case 'chkEmail':
+      isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value);
+      errorMessage = isValid ? '' : 'Please enter a valid email address';
+      break;
+    case 'cardNumber':
+      isValid = field.value.replace(/\s/g, '').length >= 13;
+      errorMessage = isValid ? '' : 'Please enter a valid card number';
+      break;
+    case 'cardExpiry':
+      isValid = /^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(field.value);
+      errorMessage = isValid ? '' : 'Please enter a valid expiry date (MM/YY)';
+      break;
+    case 'cardCvc':
+      isValid = field.value.length >= 3;
+      errorMessage = isValid ? '' : 'Please enter a valid CVC';
+      break;
+  }
+  
+  errorElement.textContent = errorMessage;
+  field.classList.toggle('invalid', !isValid);
+  
+  return isValid;
+}
+
+/***********************
+ * Admin Dashboard *
+ ***********************/
+async function initAdminDashboard() {
+    await loadDashboardData();
+    initDashboardCharts();
+    initUserManagement();
+    initOrderManagement();
+    initModals();
+}
+
+async function loadDashboardData() {
+    showSpinner(true);
+    
+    try {
+        // Load stats
+        const [orders, products, users] = await Promise.all([
+            apiGet('/orders'),
+            apiGet('/products'),
+            apiGet('/users')
+        ]);
+        
+        // Update stats
+        if (orders) {
+            const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+            $('#totalRevenue').textContent = money(totalRevenue);
+            $('#totalOrders').textContent = orders.length;
+            
+            // Load recent orders
+            loadRecentOrders(orders.slice(0, 5));
+        }
+        
+        if (products) {
+            $('#totalProducts').textContent = products.length;
+        }
+        
+        if (users) {
+            $('#totalUsers').textContent = users.length;
+            // Load users table
+            loadUsersTable(users);
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showToast('Error loading dashboard data');
+    } finally {
+        showSpinner(false);
+    }
+}
+
+function loadRecentOrders(orders) {
+    const tbody = $('#recentOrdersTable tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = orders.map(order => `
+        <tr>
+            <td>${order.id}</td>
+            <td>${order.customer?.name || 'N/A'}</td>
+            <td>${new Date(order.createdAt).toLocaleDateString()}</td>
+            <td>${money(order.total)}</td>
+            <td><span class="status-badge status-${order.status.toLowerCase()}">${order.status}</span></td>
+            <td>
+                <button class="button-primary btn-sm view-order" data-id="${order.id}">View</button>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Add event listeners to view buttons
+    tbody.querySelectorAll('.view-order').forEach(btn => {
+        btn.addEventListener('click', () => viewOrder(btn.dataset.id));
+    });
+}
+
+function loadUsersTable(users) {
+    const tbody = $('#usersTable tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>${user.id}</td>
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td>${user.phone || 'N/A'}</td>
+            <td>${new Date(user.created_at).toLocaleDateString()}</td>
+            <td>
+                <button class="button-primary btn-sm edit-user" data-id="${user.id}">Edit</button>
+                <button class="button-primary btn-sm btn-danger delete-user" data-id="${user.id}">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Add event listeners to user action buttons
+    tbody.querySelectorAll('.edit-user').forEach(btn => {
+        btn.addEventListener('click', () => editUser(btn.dataset.id));
+    });
+    
+    tbody.querySelectorAll('.delete-user').forEach(btn => {
+        btn.addEventListener('click', () => deleteUser(btn.dataset.id));
+    });
+}
+
+function initDashboardCharts() {
+    // This would be populated with real data from your API
+    const revenueCtx = $('#revenueChart');
+    const productsCtx = $('#productsChart');
+    
+    if (revenueCtx) {
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Revenue (ZAR)',
+                    data: [12500, 19000, 18000, 22000, 21000, 25000],
+                    borderColor: '#fff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    if (productsCtx) {
+        new Chart(productsCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Knives', 'Tools', 'Home Goods', 'Outdoor'],
+                datasets: [{
+                    data: [45, 25, 20, 10],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function initUserManagement() {
+    $('#addUserBtn')?.addEventListener('click', () => {
+        $('#userForm').reset();
+        $('#userId').value = '';
+        $('#userModal').style.display = 'block';
+    });
+}
+
+function initOrderManagement() {
+    // Handled by the view order buttons
+}
+
+async function viewOrder(orderId) {
+    showSpinner(true);
+    
+    try {
+        const order = await apiGet(`/orders/${orderId}`);
+        if (!order) {
+            showToast('Order not found');
+            return;
+        }
+        
+        // Populate order modal
+        $('#orderIdTitle').textContent = order.id;
+        $('#orderCustomerInfo').innerHTML = `
+            <p><strong>Name:</strong> ${order.customer?.name || 'N/A'}</p>
+            <p><strong>Email:</strong> ${order.customer?.email || 'N/A'}</p>
+            <p><strong>Phone:</strong> ${order.customer?.phone || 'N/A'}</p>
+            <p><strong>Address:</strong> ${order.customer?.address || 'N/A'}</p>
+            <p><strong>Delivery:</strong> ${order.customer?.delivery || 'Standard'}</p>
+        `;
+        
+        // Populate order items
+        const itemsTbody = $('#orderItemsTable tbody');
+        itemsTbody.innerHTML = order.items.map(item => `
+            <tr>
+                <td>${item.name}</td>
+                <td>${money(item.price)}</td>
+                <td>${item.qty}</td>
+                <td>${money(item.price * item.qty)}</td>
+            </tr>
+        `).join('');
+        
+        // Populate order summary
+        $('#orderSummary').innerHTML = `
+            <p><strong>Subtotal:</strong> ${money(order.total - 79)}</p>
+            <p><strong>Shipping:</strong> ${money(79)}</p>
+            <p><strong>Total:</strong> ${money(order.total)}</p>
+            <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleString()}</p>
+        `;
+        
+        // Set current status
+        $('#orderStatusSelect').value = order.status;
+        
+        // Set up update button
+        $('#updateStatusBtn').onclick = () => updateOrderStatus(orderId);
+        
+        // Show modal
+        $('#orderModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading order:', error);
+        showToast('Error loading order details');
+    } finally {
+        showSpinner(false);
+    }
+}
+
+async function updateOrderStatus(orderId) {
+    const newStatus = $('#orderStatusSelect').value;
+    
+    try {
+        const result = await apiPost('/orders/update-status', {
+            id: orderId,
+            status: newStatus
+        });
+        
+        if (result) {
+            showToast('Order status updated successfully');
+            $('#orderModal').style.display = 'none';
+            loadDashboardData(); // Refresh data
+        }
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        showToast('Error updating order status');
+    }
+}
+
+function initModals() {
+    // Close modals when clicking on X
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        });
+    });
+    
+    // Close modals when clicking outside
+    window.addEventListener('click', (event) => {
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // Cancel button in user modal
+    $('#cancelUserBtn')?.addEventListener('click', () => {
+        $('#userModal').style.display = 'none';
+    });
+    
+    // User form submission
+    $('#userForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveUser();
+    });
+}
+
+async function saveUser() {
+    const userData = {
+        id: $('#userId').value,
+        name: $('#userName').value,
+        email: $('#userEmail').value,
+        phone: $('#userPhone').value,
+        password: $('#userPassword').value
+    };
+    
+    try {
+        const endpoint = userData.id ? '/users/update' : '/users';
+        const result = await apiPost(endpoint, userData);
+        
+        if (result) {
+            showToast(`User ${userData.id ? 'updated' : 'created'} successfully`);
+            $('#userModal').style.display = 'none';
+            loadDashboardData(); // Refresh data
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showToast('Error saving user');
+    }
+}
+
+async function editUser(userId) {
+    try {
+        const user = await apiGet(`/users/${userId}`);
+        if (!user) {
+            showToast('User not found');
+            return;
+        }
+        
+        // Populate form
+        $('#userId').value = user.id;
+        $('#userName').value = user.name;
+        $('#userEmail').value = user.email;
+        $('#userPhone').value = user.phone || '';
+        $('#userPassword').value = '';
+        
+        // Show modal
+        $('#userModal').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading user:', error);
+        showToast('Error loading user details');
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user?')) {
+        return;
+    }
+    
+    try {
+        const result = await apiPost('/users/delete', { id: userId });
+        
+        if (result) {
+            showToast('User deleted successfully');
+            loadDashboardData(); // Refresh data
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showToast('Error deleting user');
+    }
+}
+
 /*************************************
  * Reports page *
  ************************************/

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForgeWorks — Reports</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+        <a href="admin.html">Admin</a>
+        <a href="suppliers.html">Suppliers</a>
+        <a href="reports.html">Reports</a>
+        <a href="checkout.html">Checkout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Reports</h2>
+    <div class="controls-bar">
+      <div></div>
+      <div class="controls-right">
+        <input type="month" id="repMonth" />
+        <button class="button-primary" id="runReports">Run</button>
+      </div>
+    </div>
+
+    <section style="margin-top:1rem;">
+      <h3>Sales Summary</h3>
+      <div class="table-wrap">
+        <table id="salesTable">
+          <thead><tr><th>Date</th><th>Orders</th><th>Units</th><th>Revenue (ZAR)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="salesChart" style="margin-top:1rem;"></div>
+    </section>
+
+    <section style="margin-top:2rem;">
+      <h3>Top Products</h3>
+      <div class="table-wrap">
+        <table id="topProductsTable">
+          <thead><tr><th>Product</th><th>Units</th><th>Revenue (ZAR)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section style="margin-top:2rem;">
+      <h3>Customers</h3>
+      <div class="table-wrap">
+        <table id="customersTable">
+          <thead><tr><th>Email</th><th>Orders</th><th>Spend (ZAR)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    bootstrapData();
+    initReportsPage();
+  </script>
+</body>
+</html>

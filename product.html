@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForgeWorks — Product</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+        <a href="admin.html">Admin</a>
+        <a href="suppliers.html">Suppliers</a>
+        <a href="reports.html">Reports</a>
+        <a href="checkout.html">Checkout</a>
+      </nav>
+    </div>
+  </header>
+
+  <div id="userIcon"></div>
+  <div id="cartIcon"></div>
+
+  <main class="container">
+    <section class="product-page" id="productPage"></section>
+    <a class="back-link" href="index.html">← Back to catalogue</a>
+  </main>
+
+  <div id="toast"></div>
+  <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+  <script src="script.js"></script>
+  <script>
+    initUserIcon();
+    initCartIcon();
+    bootstrapData();
+    renderProductPage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ForgeWorks — Your Cart</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+        <a href="admin.html">Admin</a>
+        <a href="suppliers.html">Suppliers</a>
+        <a href="reports.html">Reports</a>
+        <a href="checkout.html">Checkout</a>
+      </nav>
+    </div>
+  </header>
+
+  <div id="userIcon"></div>
+  <div id="cartIcon"></div>
+
+  <main class="container">
+    <h1>Your Cart</h1>
+    <div id="cartContent" class="fade-in"></div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="script.js"></script>
+  <script>
+    initUserIcon();
+    initCartIcon();
+    bootstrapData();
+
+    const cartContainer = document.getElementById('cartContent');
+
+    function renderCart() {
+      // Use the same localStorage key as the main site
+      const cart = getJSON(LS_KEYS.CART) || [];
+      const products = getJSON(LS_KEYS.PRODUCTS) || [];
+
+      console.log('Cart data:', cart);
+
+      if (cart.length === 0) {
+        cartContainer.innerHTML = `
+          <div class="empty-state">
+            <h2>Your cart is empty</h2>
+            <a class="button-primary" href="index.html">Browse products</a>
+          </div>
+        `;
+        updateCartCount();
+        return;
+      }
+
+      let rows = '';
+      let grand = 0;
+      
+      cart.forEach((item, index) => {
+        // Find product details
+        const p = products.find(prod => prod.id === item.id);
+        if (!p) {
+          console.log('Product not found for cart item:', item);
+          return;
+        }
+        
+        const price = Number(item.price || p.price || 0);
+        const qty = Number(item.qty || 0);
+        const total = price * qty;
+        grand += total;
+
+        rows += `
+          <tr class="fade-in">
+            <td><img class="cart-img" src="${item.image || p.image || 'images/placeholder.jpg'}" alt="${item.name || p.name}"></td>
+            <td>${item.name || p.name}</td>
+            <td>${money(price)}</td>
+            <td>
+              <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+              <span style="margin: 0 0.5rem; min-width: 2ch; display: inline-block; text-align: center;">${qty}</span>
+              <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+            </td>
+            <td>${money(total)}</td>
+            <td><button class="button-primary" style="background:#222;color:#fff;border:1px solid var(--border);" onclick="removeItem(${index})">Remove</button></td>
+          </tr>
+        `;
+      });
+
+      cartContainer.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th><th>Product</th><th>Price</th><th>Quantity</th><th>Total</th><th></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="controls-bar" style="justify-content: space-between; margin-top: 1rem;">
+          <a href="index.html" class="button-primary" style="background: transparent; color: var(--text); border: 1px solid var(--border);">← Continue Shopping</a>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="font-weight:800;font-size:1.2rem">Grand Total: ${money(grand)}</div>
+            <a href="checkout.html" class="button-primary" ${cart.length === 0 ? 'style="opacity:0.5;pointer-events:none;"' : ''}>Proceed to Checkout</a>
+          </div>
+        </div>
+      `;
+      updateCartCount();
+    }
+
+    window.updateQty = (index, change) => {
+      let cart = getJSON(LS_KEYS.CART) || [];
+      if (!cart[index]) return;
+      
+      cart[index].qty = Number(cart[index].qty || 0) + change;
+      
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+      
+      setJSON(LS_KEYS.CART, cart);
+      renderCart();
+      showToast(change > 0 ? 'Quantity increased' : 'Quantity decreased');
+    };
+
+    window.removeItem = (index) => {
+      let cart = getJSON(LS_KEYS.CART) || [];
+      const itemName = cart[index]?.name || 'Item';
+      cart.splice(index, 1);
+      setJSON(LS_KEYS.CART, cart);
+      renderCart();
+      showToast(`${itemName} removed from cart`);
+    };
+
+    renderCart();
+  </script>
+</body>
+</html>

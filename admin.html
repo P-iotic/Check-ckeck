@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForgeWorks — Admin Products</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+        <a href="admin.html">Admin</a>
+        <a href="suppliers.html">Suppliers</a>
+        <a href="reports.html">Reports</a>
+        <a href="checkout.html">Checkout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Product Management</h2>
+    <form id="productForm" class="container" style="max-width:720px; padding:0;">
+      <input type="hidden" id="prodId" />
+      <div class="form-group">
+        <label>Name</label>
+        <input id="prodName" class="input" required />
+        <div class="error" id="eProdName"></div>
+      </div>
+      <div class="form-group">
+        <label>Price (ZAR)</label>
+        <input id="prodPrice" class="input" type="number" step="0.01" min="0" required />
+        <div class="error" id="eProdPrice"></div>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <input id="prodCategory" class="input" />
+      </div>
+      <div class="form-group">
+        <label>Image URL</label>
+        <input id="prodImage" class="input" placeholder="images/your-file.jpg" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="prodDesc" class="input" rows="3"></textarea>
+      </div>
+      <button class="button-primary" type="submit">Save Product</button>
+    </form>
+
+    <h3 style="margin-top:2rem;">Products</h3>
+    <div class="table-wrap">
+      <table id="adminProductsTable">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Image</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+  <script src="script.js"></script>
+  <script>
+    bootstrapData();
+    initAdminProducts();
+  </script>
+</body>
+</html>

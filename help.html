@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Help & FAQ</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Global header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">Help & FAQ</div>
+      <nav class="topnav"></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="fade-in" style="max-width:900px;margin:1rem auto;">
+      <div class="controls-bar" style="justify-content:flex-end">
+        <input type="search" id="helpSearch" placeholder="Search help..." title="Type a keyword (e.g., cart, login, sort)">
+      </div>
+
+      <section id="tips" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;margin-bottom:1rem;">
+        <h2 style="margin-top:0;">Quick Tips</h2>
+        <ul>
+          <li><span title="Cart keeps selected items until checkout." style="border-bottom:1px dotted #aaa; cursor:help;">Cart</span>: Click <strong>ADD TO CART</strong> on a product page. See the item count in the top-right cart icon.</li>
+          <li><span title="Use categories and search together for precision." style="border-bottom:1px dotted #aaa; cursor:help;">Filtering</span>: Combine category filter, search, and the sort dropdown for best results.</li>
+          <li><span title="Passwords must be at least 6 characters." style="border-bottom:1px dotted #aaa; cursor:help;">Account</span>: Register with a valid email; we store info locally on your device (no server).</li>
+        </ul>
+      </section>
+
+      <section id="faqList" style="display:grid; gap:1rem;">
+        <article class="fade-in" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;">
+          <h3>How do I add products to the cart?</h3>
+          <p>Open a product, choose a quantity, and click <em>ADD TO CART</em>. A toast will confirm, and the cart icon will bump.</p>
+        </article>
+
+        <article class="fade-in" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;">
+          <h3>How do I sort or search products?</h3>
+          <p>On the home page, use the search box and the <em>Sort</em> dropdown (Price or Name). Sorting respects your current category filter and search term.</p>
+        </article>
+
+        <article class="fade-in" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;">
+          <h3>How do I create an account or login?</h3>
+          <p>Go to <strong>Account</strong>, switch to <em>Register</em>, and complete the form. Passwords must be at least 6 characters. Use a valid email format (e.g., name@example.com).</p>
+        </article>
+
+        <article class="fade-in" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;">
+          <h3>How do I remove items from the cart?</h3>
+          <p>Open the cart and click <em>Remove</em> next to the item, or decrease quantity to 0 (the item will be removed automatically).</p>
+        </article>
+
+        <article class="fade-in" style="background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:10px;">
+          <h3>Where is my data stored?</h3>
+          <p>All data (cart, users) is stored in your browser’s <em>localStorage</em>. Clearing browser data will remove it.</p>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    buildTopNav();
+    initUserIcon();
+    initCartIcon();
+
+    const list = Array.from(document.querySelectorAll('#faqList article'));
+    const input = document.getElementById('helpSearch');
+    input.addEventListener('input', () => {
+      const term = input.value.toLowerCase().trim();
+      list.forEach(card => {
+        const txt = card.textContent.toLowerCase();
+        card.style.display = txt.includes(term) ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>

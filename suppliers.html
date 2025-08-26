@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ForgeWorks — Suppliers</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+        <a href="admin.html">Admin</a>
+        <a href="suppliers.html">Suppliers</a>
+        <a href="reports.html">Reports</a>
+        <a href="checkout.html">Checkout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Supplier Management</h2>
+    <form id="supplierForm" class="container" style="max-width:720px; padding:0;">
+      <input type="hidden" id="supId" />
+      <div class="form-group">
+        <label>Supplier Name</label>
+        <input id="supName" class="input" required />
+        <div class="error" id="eSupName"></div>
+      </div>
+      <div class="form-group">
+        <label>Contact Email</label>
+        <input id="supEmail" class="input" type="email" />
+        <div class="error" id="eSupEmail"></div>
+      </div>
+      <div class="form-group">
+        <label>Materials (comma separated)</label>
+        <input id="supMaterials" class="input" />
+      </div>
+      <div class="form-group">
+        <label>Lead Time (days)</label>
+        <input id="supLead" class="input" type="number" min="0" />
+      </div>
+      <button class="button-primary" type="submit">Save Supplier</button>
+    </form>
+
+    <h3 style="margin-top:2rem;">Suppliers</h3>
+    <div class="table-wrap">
+      <table id="suppliersTable">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Email</th><th>Materials</th><th>Lead Time</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+  <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+  <script src="script.js"></script>
+  <script>
+    bootstrapData();
+    initSuppliersPage();
+  </script>
+</body>
+</html>

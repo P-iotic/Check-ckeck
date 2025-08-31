@@ -1,9 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
-  <title>ForgeWorks — Account</title>
+  <title>ForgeWorks — My Account</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Account-specific styles */
+    .account-section {
+      background: var(--panel);
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    .account-form {
+      max-width: 600px;
+    }
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .orders-table th, .orders-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    .orders-table th {
+      background: #0d0d0d;
+    }
+    .report-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    #cartIcon a {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      background: url('images/cart.png') no-repeat center center;
+      background-size: contain;
+      position: relative;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -11,11 +50,8 @@
       <div class="brand">ForgeWorks</div>
       <nav class="topnav">
         <a href="index.html">Products</a>
-        <a href="account.html">Account</a>
-        <a href="admin.html">Admin</a>
-        <a href="suppliers.html">Suppliers</a>
-        <a href="reports.html">Reports</a>
-        <a href="checkout.html">Checkout</a>
+        <a href="account.html" data-role="customer" class="active">Account</a>
+        <a href="checkout.html" data-role="customer">Checkout</a>
       </nav>
     </div>
   </header>
@@ -24,46 +60,363 @@
   <div id="cartIcon"></div>
 
   <main class="container">
-    <h2>Profile</h2>
-    <form id="profileForm" class="container" style="max-width:560px; padding:0;">
-      <div class="form-group">
-        <label for="profName">Full name</label>
-        <input class="input" id="profName" required />
-        <div class="error" id="errName"></div>
-      </div>
-      <div class="form-group">
-        <label for="profEmail">Email</label>
-        <input class="input" id="profEmail" type="email" required />
-        <div class="error" id="errEmail"></div>
-      </div>
-      <div class="form-group">
-        <label for="profPhone">Phone</label>
-        <input class="input" id="profPhone" placeholder="+27 82 123 4567" />
-        <div class="error" id="errPhone"></div>
-      </div>
-      <button type="submit" class="button-primary">Save profile</button>
-    </form>
+    <h2>My Account</h2>
 
-    <h2 style="margin-top:2rem;">Order History</h2>
-    <div class="table-wrap">
-      <table id="orderHistoryTable">
-        <thead>
-          <tr><th>Order #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <!-- Update Details Section -->
+    <section class="account-section">
+      <h3>Update Your Details</h3>
+      <form id="accountForm" class="account-form">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input id="accName" class="input" required />
+          <div class="error" id="eAccName"></div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="accEmail" class="input" type="email" required />
+          <div class="error" id="eAccEmail"></div>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input id="accPhone" class="input" placeholder="+27 82 123 4567" />
+          <div class="error" id="eAccPhone"></div>
+        </div>
+        <div class="form-group">
+          <label>New Password (optional)</label>
+          <input id="accPassword" class="input" type="password" placeholder="Leave blank to keep current" />
+          <div class="error" id="eAccPassword"></div>
+        </div>
+        <button class="button-primary" type="submit">Update Details</button>
+      </form>
+    </section>
+
+    <!-- Past Transactions Section -->
+    <section class="account-section">
+      <h3>Past Transactions</h3>
+      <div class="table-wrap">
+        <table class="orders-table" id="pastOrdersTable">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="report-buttons">
+        <button class="button-primary" id="printReportBtn">Print Report</button>
+        <button class="button-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </section>
   </main>
 
   <div id="toast"></div>
   <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+  <!-- Order Detail Modal (for viewing individual orders) -->
+  <div id="orderModal" class="modal">
+    <div class="modal-content wide">
+      <div class="modal-header">
+        <h3>Order Details - <span id="orderIdTitle"></span></h3>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="order-section">
+          <h4>Order Summary</h4>
+          <div id="orderSummary"></div>
+        </div>
+        <div class="order-section">
+          <h4>Order Items</h4>
+          <table id="orderItemsTable">
+            <thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
   <script>
     initUserIcon();
     initCartIcon();
     bootstrapData();
-    initAccountPage();
+
+    // Global variable to store orders
+    let userOrders = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const user = JSON.parse(localStorage.getItem("fw_user") || "{}");
+      if (!user.id) {
+        showToast("Please log in to access your account");
+        window.location.href = "login.html"; // Assume a login page exists
+        return;
+      }
+
+      // Prefill user details
+      document.getElementById("accName").value = user.name || "";
+      document.getElementById("accEmail").value = user.email || "";
+      document.getElementById("accPhone").value = user.phone || "";
+
+      // Update details form
+      document.getElementById("accountForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("accName").value.trim();
+        const email = document.getElementById("accEmail").value.trim();
+        const phone = document.getElementById("accPhone").value.trim();
+        const password = document.getElementById("accPassword").value.trim();
+
+        if (!validateName() || !validateEmail()) return;
+
+        const payload = { name, email, phone };
+        if (password) payload.password = password;
+
+        try {
+          // Update user in localStorage
+          const updatedUser = { ...user, name, email, phone };
+          localStorage.setItem("fw_user", JSON.stringify(updatedUser));
+          
+          // Try to update via API if available
+          try {
+            const res = await fetch(`/api/users/${user.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+              const apiUser = await res.json();
+              localStorage.setItem("fw_user", JSON.stringify({...updatedUser, ...apiUser}));
+            }
+          } catch (apiError) {
+            console.log("API update failed, using localStorage only");
+          }
+          
+          showToast("Details updated successfully");
+        } catch (error) {
+          console.error("Update error:", error);
+          showToast("Failed to update details");
+        }
+      });
+
+      // Load past orders
+      loadPastOrders(user.email);
+
+      // Generate report buttons
+      document.getElementById("printReportBtn").addEventListener("click", printReport);
+      document.getElementById("exportCsvBtn").addEventListener("click", exportToCsv);
+
+      // Close modal
+      document.querySelectorAll(".close").forEach(close => {
+        close.addEventListener("click", () => {
+          document.getElementById("orderModal").style.display = "none";
+        });
+      });
+
+      // Initialize cart icon with image
+      const cartIcon = document.getElementById("cartIcon");
+      if (cartIcon) {
+        cartIcon.innerHTML = `<a href="cart.html" aria-label="Shopping Cart">
+          <span id="cartCount">0</span>
+        </a>`;
+        updateCartCount();
+      }
+    });
+
+    // Validation functions
+    function validateName() {
+      const name = document.getElementById("accName");
+      const error = document.getElementById("eAccName");
+      if (!name.value.trim()) {
+        setInvalid(name, error, "Name is required");
+        return false;
+      } else if (name.value.trim().length < 2) {
+        setInvalid(name, error, "Name must be at least 2 characters");
+        return false;
+      } else {
+        setValid(name, error);
+        return true;
+      }
+    }
+
+    function validateEmail() {
+      const email = document.getElementById("accEmail");
+      const error = document.getElementById("eAccEmail");
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email.value.trim()) {
+        setInvalid(email, error, "Email is required");
+        return false;
+      } else if (!emailRegex.test(email.value)) {
+        setInvalid(email, error, "Please enter a valid email address");
+        return false;
+      } else {
+        setValid(email, error);
+        return true;
+      }
+    }
+
+    function setValid(element, errorElement) {
+      element.classList.remove("error");
+      element.classList.add("success");
+      if (errorElement) errorElement.textContent = "";
+    }
+
+    function setInvalid(element, errorElement, message) {
+      element.classList.remove("success");
+      element.classList.add("error");
+      if (errorElement) errorElement.textContent = message;
+    }
+
+    async function loadPastOrders(email) {
+      try {
+        // Try to get orders from API first
+        let orders = [];
+        try {
+          const res = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+          if (res.ok) {
+            orders = await res.json();
+          }
+        } catch (apiError) {
+          console.log("API not available, using localStorage");
+          orders = JSON.parse(localStorage.getItem("fw_orders") || "[]")
+            .filter(order => order.customer && order.customer.email === email);
+        }
+        
+        userOrders = orders;
+        const tbody = document.querySelector("#pastOrdersTable tbody");
+        tbody.innerHTML = "";
+
+        if (!userOrders.length) {
+          tbody.innerHTML = `<tr><td colspan="5">No past orders found</td></tr>`;
+          return;
+        }
+
+        userOrders.forEach(order => {
+          const tr = document.createElement("tr");
+          const orderDate = new Date(order.created_at || order.createdAt).toLocaleDateString();
+          tr.innerHTML = `
+            <td>${order.id}</td>
+            <td>${orderDate}</td>
+            <td>R ${order.total.toFixed(2)}</td>
+            <td>${order.status}</td>
+            <td><button class="button-primary btn-sm" onclick="viewOrder('${order.id}')">View</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+        showToast("Failed to load past orders");
+      }
+    }
+
+    function viewOrder(orderId) {
+      const order = userOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      document.getElementById("orderIdTitle").textContent = order.id;
+      document.getElementById("orderSummary").innerHTML = `
+        <p><strong>Date:</strong> ${new Date(order.created_at || order.createdAt).toLocaleString()}</p>
+        <p><strong>Status:</strong> ${order.status}</p>
+        <p><strong>Total:</strong> R ${order.total.toFixed(2)}</p>
+        <p><strong>Delivery:</strong> ${order.delivery_option || (order.customer && order.customer.delivery) || 'Standard'}</p>
+        <p><strong>Address:</strong> ${order.customer_address || (order.customer && order.customer.address) || 'N/A'}</p>
+      `;
+
+      const itemsTbody = document.querySelector("#orderItemsTable tbody");
+      itemsTbody.innerHTML = "";
+      
+      if (order.items && order.items.length) {
+        order.items.forEach(item => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>R ${item.price.toFixed(2)}</td>
+            <td>${item.quantity || item.qty}</td>
+            <td>R ${((item.price || 0) * (item.quantity || item.qty || 0)).toFixed(2)}</td>
+          `;
+          itemsTbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById("orderModal").style.display = "block";
+    }
+
+    function printReport() {
+      const user = JSON.parse(localStorage.getItem("fw_user") || "{}");
+      const printContent = document.createElement("div");
+      printContent.innerHTML = `
+        <h2>ForgeWorks Purchase Report</h2>
+        <p>Customer: ${user.name} (${user.email})</p>
+        <p>Date Generated: ${new Date().toLocaleDateString()}</p>
+        <table>
+          <thead><tr><th>Order ID</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>${userOrders.map(order => `
+            <tr>
+              <td>${order.id}</td>
+              <td>${new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
+              <td>R ${order.total.toFixed(2)}</td>
+              <td>${order.status}</td>
+            </tr>
+          `).join('')}</tbody>
+        </table>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>ForgeWorks Purchase Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; }
+            </style>
+          </head>
+          <body>
+            ${printContent.innerHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.onload = () => printWindow.print();
+      showToast('Opening print dialog...');
+    }
+
+    function exportToCsv() {
+      let csvContent = 'Order ID,Date,Amount,Status\n';
+      userOrders.forEach(order => {
+        const orderDate = new Date(order.created_at || order.createdAt).toLocaleDateString();
+        csvContent += `"${order.id}","${orderDate}","R ${order.total.toFixed(2)}","${order.status}"\n`;
+      });
+
+      const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `forgeworks-purchases-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('CSV exported successfully!');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+    
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem("fw_cart") || "[]");
+      const qty = cart.reduce((a, c) => a + Number(c.qty || 0), 0);
+      const cc = document.getElementById("cartCount");
+      if (cc) cc.textContent = qty;
+    }
   </script>
 </body>
 </html>

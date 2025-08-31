@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
   <title>ForgeWorks — Catalogue</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Add cart icon styling */
+    #cartIcon a {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      background: url('images/cart.png') no-repeat center center;
+      background-size: contain;
+      position: relative;
+    }
+    
+    #cartCount {
+      position: absolute;
+      top: -8px;
+      right: -10px;
+      background: #ff3b30;
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      min-width: 18px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand">ForgeWorks</div>
       <nav class="topnav">
-        <a href="index.html">Products</a>
-        <a href="account.html">Account</a>
-        <a href="admin.html">Admin</a>
-        <a href="suppliers.html">Suppliers</a>
-        <a href="reports.html">Reports</a>
-        <a href="checkout.html">Checkout</a>
+          <a href="index.html">Products</a>
+          <a href="account.html" data-role="customer">Account</a>
+          <a href="admin.html" data-role="admin">Admin</a>
+          <a href="suppliers.html" data-role="admin supplier">Suppliers</a>
       </nav>
     </div>
   </header>
@@ -45,6 +68,26 @@
 
   <script src="script.js"></script>
   <script>
+    // Initialize the cart icon with image
+    function initCartIcon() {
+      const cartIcon = document.getElementById('cartIcon');
+      if (cartIcon) {
+        cartIcon.innerHTML = `<a href="cart.html" aria-label="Shopping Cart">
+          <span id="cartCount">0</span>
+        </a>`;
+        updateCartCount();
+      }
+    }
+    
+    // Update cart count function
+    function updateCartCount() {
+      const cart = JSON.parse(localStorage.getItem('fw_cart') || '[]');
+      const qty = cart.reduce((a, c) => a + Number(c.qty || 0), 0);
+      const cc = document.getElementById('cartCount');
+      if (cc) cc.textContent = qty;
+    }
+    
+    // Initialize everything
     initUserIcon();
     initCartIcon();
     bootstrapData();

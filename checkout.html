@@ -1,27 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
   <title>ForgeWorks — Checkout</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .input.error {
+      border-color: #e74c3c;
+      box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e74c3c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+    
+    .input.success {
+      border-color: #2ecc71;
+      box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232ecc71' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+    
+    .error {
+      color: #e74c3c;
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+      display: block;
+      min-height: 1.2rem;
+    }
+    
+    .validation-hint {
+      padding: 12px;
+      margin: 15px 0;
+      background: #f8f9fa;
+      border-left: 4px solid #3498db;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #2c3e50;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .input-group .form-group {
+      flex: 1;
+    }
+    
+    @media (max-width: 768px) {
+      .input-group {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand">ForgeWorks</div>
       <nav class="topnav">
-        <a href="index.html">Products</a>
-        <a href="account.html">Account</a>
-        <a href="admin.html">Admin</a>
-        <a href="suppliers.html">Suppliers</a>
-        <a href="reports.html">Reports</a>
-        <a href="checkout.html">Checkout</a>
+          <a href="index.html">Products</a>
+          <a href="account.html" data-role="customer">Account</a>
+          <a href="admin.html" data-role="admin">Admin</a>
+          <a href="admin-dashboard.html" data-role="admin">Dashboard</a>
+          <a href="suppliers.html" data-role="admin supplier">Suppliers</a>
+          <a href="reports.html" data-role="admin">Reports</a>
+          <a href="checkout.html" data-role="customer">Checkout</a>
       </nav>
     </div>
   </header>
-
-  <div id="userIcon"></div>
-  <div id="cartIcon"></div>
 
   <main class="container">
     <h2>Checkout</h2>
@@ -58,20 +112,31 @@
       </div>
 
       <h3>Payment (Mock)</h3>
+      
+      <div class="validation-hint">
+        <strong>Note:</strong> Payment fields are optional for this demonstration. You can leave them blank or enter any values.
+      </div>
+      
       <div class="form-group">
         <label>Card Number</label>
-        <input id="cardNumber" class="input" inputmode="numeric" placeholder="4111 1111 1111 1111" required />
+        <input id="cardNumber" class="input" inputmode="numeric" placeholder="4111 1111 1111 1111" maxlength="19" />
         <div class="error" id="eCardNumber"></div>
       </div>
-      <div class="form-group">
-        <label>Expiry (MM/YY)</label>
-        <input id="cardExpiry" class="input" placeholder="12/26" required />
+      
+      <div class="input-group">
+        <div class="form-group">
+          <label>Expiry (MM/YY)</label>
+          <input id="cardExpiry" class="input" placeholder="12/26" maxlength="5" />
+          <div class="error" id="eCardExpiry"></div>
+        </div>
+        <div class="form-group">
+          <label>CVC</label>
+          <input id="cardCvc" class="input" inputmode="numeric" placeholder="123" maxlength="3" />
+          <div class="error" id="eCardCvc"></div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>CVC</label>
-        <input id="cardCvc" class="input" inputmode="numeric" placeholder="123" required />
-      </div>
-      <button class="button-primary" type="submit">Pay & Place Order</button>
+      
+      <button class="button-primary" type="submit">Place Order</button>
     </form>
   </main>
 
@@ -84,6 +149,204 @@
     initCartIcon();
     bootstrapData();
     initCheckoutPage();
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Validate name in real-time
+      const nameInput = document.getElementById("chkName");
+      if (nameInput) {
+        nameInput.addEventListener("input", validateName);
+      }
+      
+      // Validate email in real-time
+      const emailInput = document.getElementById("chkEmail");
+      if (emailInput) {
+        emailInput.addEventListener("input", validateEmail);
+      }
+      
+      // Validate address in real-time
+      const addressInput = document.getElementById("chkAddress");
+      if (addressInput) {
+        addressInput.addEventListener("input", validateAddress);
+      }
+      
+      // Form submission handler
+      document.getElementById("checkoutForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Validate non-payment fields
+        const isNameValid = validateName();
+        const isEmailValid = validateEmail();
+        const isAddressValid = validateAddress();
+
+        if (!isNameValid || !isEmailValid || !isAddressValid) {
+          showToast("Please correct the errors before submitting");
+          return;
+        }
+
+        const name = document.getElementById("chkName").value.trim();
+        const email = document.getElementById("chkEmail").value.trim();
+        const phone = document.getElementById("chkPhone").value.trim();
+        const address = document.getElementById("chkAddress").value.trim();
+        const delivery = document.getElementById("chkDelivery").value;
+
+        // Show loading spinner
+        document.getElementById("spinnerOverlay").style.display = "flex";
+
+        try {
+          // Get cart items from localStorage
+          const cart = JSON.parse(localStorage.getItem("fw_cart") || "[]");
+          
+          // Log cart for debugging
+          console.log('Cart contents:', cart);
+          
+          // Validate cart items
+          if (!cart || cart.length === 0) {
+            showToast("Your cart is empty");
+            document.getElementById("spinnerOverlay").style.display = "none";
+            return;
+          }
+
+          const items = cart
+            .filter(item => 
+              item && 
+              typeof item.id === 'string' && 
+              item.id.trim() !== '' && 
+              Number.isInteger(parseInt(item.qty)) && 
+              parseInt(item.qty) > 0 && 
+              typeof parseFloat(item.price) === 'number' && 
+              parseFloat(item.price) > 0
+            )
+            .map(item => ({
+              product_id: item.id,
+              quantity: parseInt(item.qty),
+              price: parseFloat(item.price)
+            }));
+
+          if (items.length === 0) {
+            showToast("No valid items in cart. Please add valid products.");
+            document.getElementById("spinnerOverlay").style.display = "none";
+            return;
+          }
+
+          const total = items.reduce((sum, i) => sum + (i.price * i.quantity), 0) + (items.length > 0 ? 79 : 0); // Add shipping
+
+          // Generate a unique order ID
+          const orderId = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+          const orderPayload = {
+            id: orderId,
+            customer_name: name,
+            customer_email: email,
+            customer_phone: phone,
+            customer_address: address,
+            delivery_option: delivery,
+            status: 'Pending',
+            total,
+            items
+          };
+
+          console.log('Submitting order payload:', JSON.stringify(orderPayload, null, 2));
+
+          const res = await fetch("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderPayload)
+          });
+
+          const data = await res.json();
+          if (res.ok && data.id) {
+            localStorage.removeItem("fw_cart");
+            showToast("Order placed successfully!");
+            window.location.href = `tracking.html?orderId=${data.id}`;
+          } else {
+            throw new Error(data.error || "Unknown error");
+          }
+        } catch (error) {
+          console.error("Order submission error:", error);
+          showToast(`Order failed: ${error.message}`);
+        } finally {
+          document.getElementById("spinnerOverlay").style.display = "none";
+        }
+      });
+
+      // Validation functions
+      function validateName() {
+        const name = document.getElementById("chkName");
+        const error = document.getElementById("eChkName");
+        
+        if (!name.value.trim()) {
+          setInvalid(name, error, "Name is required");
+          return false;
+        } else if (name.value.trim().length < 2) {
+          setInvalid(name, error, "Name must be at least 2 characters");
+          return false;
+        } else {
+          setValid(name, error);
+          return true;
+        }
+      }
+      
+      function validateEmail() {
+        const email = document.getElementById("chkEmail");
+        const error = document.getElementById("eChkEmail");
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!email.value.trim()) {
+          setInvalid(email, error, "Email is required");
+          return false;
+        } else if (!emailRegex.test(email.value)) {
+          setInvalid(email, error, "Please enter a valid email address");
+          return false;
+        } else {
+          setValid(email, error);
+          return true;
+        }
+      }
+      
+      function validateAddress() {
+        const address = document.getElementById("chkAddress");
+        const error = document.getElementById("eChkAddress");
+        
+        if (!address.value.trim()) {
+          setInvalid(address, error, "Address is required");
+          return false;
+        } else if (address.value.trim().length < 10) {
+          setInvalid(address, error, "Please enter a complete address");
+          return false;
+        } else {
+          setValid(address, error);
+          return true;
+        }
+      }
+      
+      function setValid(element, errorElement) {
+        element.classList.remove("error");
+        element.classList.add("success");
+        if (errorElement) {
+          errorElement.textContent = "";
+        }
+      }
+      
+      function setInvalid(element, errorElement, message) {
+        element.classList.remove("success");
+        element.classList.add("error");
+        if (errorElement) {
+          errorElement.textContent = message;
+        }
+      }
+      
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        if (toast) {
+          toast.textContent = message;
+          toast.classList.add("show");
+          setTimeout(() => toast.classList.remove("show"), 3000);
+        } else {
+          alert(message);
+        }
+      }
+    });
   </script>
 </body>
 </html>

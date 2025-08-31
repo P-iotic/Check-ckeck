@@ -629,7 +629,8 @@ function initCheckoutPage() {
         setJSON(LS_KEYS.USER, {...user, name, email, phone});
         
         showSpinner(false);
-        location.href = 'receipt.html';
+        // 🔄 Redirect to new tracking page instead of receipt
+        location.href = 'tracking.html';
       } else {
         throw new Error('Failed to save order');
       }
@@ -841,6 +842,12 @@ async function loadDashboardData() {
             loadUsersTable(users);
         }
         
+        // Initialize charts only once, not on every data load
+        if (!window.chartsInitialized) {
+            initDashboardCharts();
+            window.chartsInitialized = true;
+        }
+        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
         showToast('Error loading dashboard data');
@@ -901,12 +908,24 @@ function loadUsersTable(users) {
 }
 
 function initDashboardCharts() {
+    // Store chart instances globally so we can update them later
+    window.revenueChartInstance = null;
+    window.productsChartInstance = null;
+    
     // This would be populated with real data from your API
     const revenueCtx = $('#revenueChart');
     const productsCtx = $('#productsChart');
     
+    // Destroy existing charts if they exist
+    if (window.revenueChartInstance) {
+        window.revenueChartInstance.destroy();
+    }
+    if (window.productsChartInstance) {
+        window.productsChartInstance.destroy();
+    }
+    
     if (revenueCtx) {
-        new Chart(revenueCtx, {
+        window.revenueChartInstance = new Chart(revenueCtx, {
             type: 'line',
             data: {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -921,7 +940,7 @@ function initDashboardCharts() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true, // Changed from false to true
                 plugins: {
                     legend: {
                         labels: {
@@ -953,7 +972,7 @@ function initDashboardCharts() {
     }
     
     if (productsCtx) {
-        new Chart(productsCtx, {
+        window.productsChartInstance = new Chart(productsCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Knives', 'Tools', 'Home Goods', 'Outdoor'],
@@ -976,7 +995,7 @@ function initDashboardCharts() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true, // Changed from false to true
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -1175,87 +1194,588 @@ async function deleteUser(userId) {
     }
 }
 
-/*************************************
- * Reports page *
- ************************************/
-async function initReportsPage() {
-  // Optional month filter
-  const run = async () => {
-    const month = $('#repMonth').value; // "YYYY-MM"
+function updateNavigationBasedOnRole() {
+  const user = JSON.parse(localStorage.getItem("fw_user") || "{}");
+  const userRole = user.role || 'customer';
+  
+  // Hide admin links from non-admin users
+  if (userRole !== 'admin') {
+    document.querySelectorAll('[data-role="admin"]').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+  
+  // Hide supplier links from non-supplier users
+  if (userRole !== 'supplier' && userRole !== 'admin') {
+    document.querySelectorAll('[data-role="supplier"]').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+  
+  // Show appropriate links based on role
+  if (userRole === 'admin') {
+    document.querySelectorAll('[data-role="admin"]').forEach(el => {
+      el.style.display = 'block';
+    });
+  }
+  
+  if (userRole === 'supplier' || userRole === 'admin') {
+    document.querySelectorAll('[data-role="supplier"]').forEach(el => {
+      el.style.display = 'block';
+    });
+  }
+}
+
+// Call this function after page load on all pages
+document.addEventListener("DOMContentLoaded", function() {
+  updateNavigationBasedOnRole();
+});
+
+/********************
+ * Authentication *
+ ********************/
+/********************
+ * Authentication Helpers *
+ ********************/
+function getUserRole() {
+  const user = checkAuth(); // Use your existing checkAuth function
+  return user ? user.role : 'customer';
+}
+
+function requireAuth(requiredRole = null) {
+  const user = checkAuth();
+  
+  if (!user) {
+    // Not logged in
+    showToast("Please log in to access this page");
+    window.location.href = "login.html";
+    return false;
+  }
+  
+  if (requiredRole && user.role !== requiredRole) {
+    // Doesn't have required role
+    showToast("You don't have permission to access this page");
+    window.location.href = "index.html";
+    return false;
+  }
+  
+  return true;
+}
+
+function logout() {
+  localStorage.removeItem(LS_KEYS.USER);
+  localStorage.removeItem(LS_KEYS.CART); // Optional: clear cart on logout
+  document.body.classList.remove('user-logged-in');
+  showToast("Logged out successfully");
+  window.location.href = "index.html";
+}
+
+// Update initUserIcon to show logout option (if not already implemented)
+function initUserIcon() {
+  const el = document.getElementById('userIcon');
+  if (!el) return;
+  
+  const user = checkAuth();
+  
+  if (user) {
+    el.innerHTML = `
+      <div class="user-menu">
+        <button class="user-button" aria-label="Account">${user.name.charAt(0).toUpperCase()}</button>
+        <div class="user-dropdown">
+          <div class="user-info">
+            <strong>${user.name}</strong>
+            <div>${user.email}</div>
+            <div class="user-role">Role: ${user.role}</div>
+          </div>
+          <a href="account.html">My Account</a>
+          <a href="orders.html">My Orders</a>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `<a href="login.html" aria-label="Login">Login</a>`;
+  }
+}
+
+// Update your bootstrapData function to check auth
+async function bootstrapData() {
+    checkAuth(); // Check authentication status
     
+    // ... rest of your bootstrap code
+}
+
+// Add user menu styles to your CSS
+const userMenuStyles = `
+.user-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.user-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    min-width: 200px;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.user-menu:hover .user-dropdown {
+    display: block;
+}
+
+.user-info {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.user-dropdown a, .user-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0;
+    background: none;
+    border: none;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.user-dropdown a:hover, .user-dropdown button:hover {
+    color: var(--accent);
+}
+`;
+
+// Add the styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = userMenuStyles;
+document.head.appendChild(styleSheet);
+
+/********************
+ * Role-Based Navigation *
+ ********************/
+function updateNavigationBasedOnRole() {
+    const user = getJSON(LS_KEYS.USER);
+    if (!user) return;
+    
+    // Hide/show elements based on role
+    const adminElements = document.querySelectorAll('[data-role="admin"]');
+    const supplierElements = document.querySelectorAll('[data-role="supplier"]');
+    const customerElements = document.querySelectorAll('[data-role="customer"]');
+    
+    // Hide all role-specific elements first
+    document.querySelectorAll('[data-role]').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show elements based on current user role
+    if (user.role === 'admin') {
+        adminElements.forEach(el => el.style.display = 'block');
+        /* Redirect to admin dashboard if on certain pages
+        if (window.location.pathname.endsWith('index.html') || 
+            window.location.pathname.endsWith('product.html')) {
+            window.location.href = 'admin-dashboard.html';
+        }*/
+    } 
+    else if (user.role === 'supplier') {
+        supplierElements.forEach(el => el.style.display = 'block');
+    } 
+    else {
+        customerElements.forEach(el => el.style.display = 'block');
+    }
+    
+    // Update user menu with role
+    const userMenu = document.querySelector('.user-dropdown');
+    if (userMenu) {
+        const roleInfo = document.createElement('div');
+        roleInfo.className = 'user-role';
+        roleInfo.textContent = `Role: ${user.role}`;
+        roleInfo.style.fontSize = '0.8rem';
+        roleInfo.style.color = 'var(--muted)';
+        roleInfo.style.marginTop = '0.5rem';
+        userMenu.querySelector('.user-info').appendChild(roleInfo);
+    }
+}
+
+// Update the initUserIcon function
+function initUserIcon() {
+    const el = document.getElementById('userIcon');
+    if (!el) return;
+    
+    const user = getJSON(LS_KEYS.USER);
+    
+    if (user) {
+        el.innerHTML = `
+            <div class="user-menu">
+                <button class="user-button" aria-label="Account">${user.name.charAt(0).toUpperCase()}</button>
+                <div class="user-dropdown">
+                    <div class="user-info">
+                        <strong>${user.name}</strong>
+                        <div>${user.email}</div>
+                    </div>
+                    ${user.role === 'admin' ? 
+                        '<a href="admin.html">Admin Dashboard</a>' : 
+                        '<a href="account.html">My Account</a>'
+                    }
+                    <a href="orders.html">My Orders</a>
+                    <button onclick="logout()">Logout</button>
+                </div>
+            </div>
+        `;
+        
+        // Update navigation based on role
+        updateNavigationBasedOnRole();
+    } else {
+        el.innerHTML = `<a href="login.html" aria-label="Login">Login</a>`;
+    }
+}
+
+// Update bootstrapData to handle role-based navigation
+async function bootstrapData() {
+    checkAuth(); // Check authentication status
+    
+    const user = getJSON(LS_KEYS.USER);
+    if (user) {
+        updateNavigationBasedOnRole();
+    }
+    
+    // ... rest of your bootstrap code
+}
+
+/********************
+ * Role-Based Redirects *
+ ********************/
+function checkRoleAccess() {
+    const user = getJSON(LS_KEYS.USER);
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    // Pages that require specific roles
+    const adminPages = ['admin.html', 'admin-dashboard.html', 'suppliers.html', 'reports.html'];
+    const supplierPages = ['suppliers.html'];
+    
+    // Redirect to appropriate page based on role
+    if (user) {
+        if (adminPages.includes(currentPage) && user.role !== 'admin') {
+            window.location.href = 'index.html';
+            return false;
+        }
+        
+        if (supplierPages.includes(currentPage) && user.role !== 'supplier' && user.role !== 'admin') {
+            window.location.href = 'index.html';
+            return false;
+        }
+        
+        // Redirect admin to dashboard on main pages
+        if (user.role === 'admin' && 
+            (currentPage === 'index.html' || currentPage === 'product.html')) {
+            window.location.href = 'admin-dashboard.html';
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Update bootstrapData to check role access
+async function bootstrapData() {
+    checkAuth(); // Check authentication status
+    
+    const user = getJSON(LS_KEYS.USER);
+    if (user) {
+        updateNavigationBasedOnRole();
+        checkRoleAccess();
+    }
+    
+    // ... rest of your bootstrap code
+}
+
+
+/***********************
+* Reports Page - Simplified Working Version *
+***********************/
+
+// Global variables for reports
+let currentPage = 1;
+const ordersPerPage = 10;
+let allOrders = [];
+let filteredOrders = [];
+let chartInstances = {};
+
+async function initReportsPage() {
+  console.log("Initializing reports page...");
+  
+  // Set up event listeners
+  document.getElementById('dateRange').addEventListener('change', toggleCustomDateRange);
+  document.getElementById('applyFilters').addEventListener('click', applyFilters);
+  document.getElementById('exportPdfBtn').addEventListener('click', exportToPdf);
+  document.getElementById('exportCsvBtn').addEventListener('click', exportToCsv);
+  document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+  document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+  
+  // Load initial data
+  await loadReportsData();
+  applyFilters();
+}
+
+function toggleCustomDateRange() {
+  const dateRange = document.getElementById('dateRange').value;
+  document.getElementById('customDateRange').style.display = 
+    dateRange === 'custom' ? 'block' : 'none';
+}
+
+async function loadReportsData() {
+  showSpinner(true);
+  
+  try {
+    // For demo purposes - create sample data if API fails
+    allOrders = await generateSampleOrdersData();
+    
+    // Try to get real data from API
     try {
-      // Get orders from API
-      const orders = await apiGet('/orders');
-      
-      if (!orders) {
-        $('#salesTable tbody').innerHTML = `<tr><td colspan="4" class="empty-state">No sales data available.</td></tr>`;
-        $('#topProductsTable tbody').innerHTML = `<tr><td colspan="3" class="empty-state">No data.</td></tr>`;
-        $('#customersTable tbody').innerHTML = `<tr><td colspan="3" class="empty-state">No customers yet.</td></tr>`;
-        return;
-      }
-      
-      // Filter by month if specified
-      const filteredOrders = month ? orders.filter(o => {
-        const d = new Date(o.createdAt);
-        const tag = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        return tag === month;
-      }) : orders;
-      
-      // Sales table by day
-      const byDay = {};
-      for (const o of filteredOrders) {
-        const d = new Date(o.createdAt).toISOString().slice(0, 10);
-        if (!byDay[d]) byDay[d] = {orders: 0, units: 0, revenue: 0};
-        byDay[d].orders++;
-        byDay[d].units += o.items.reduce((a, i) => a + i.qty, 0);
-        byDay[d].revenue += o.total;
-      }
-      
-      const salesRows = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b));
-      $('#salesTable tbody').innerHTML = salesRows.length ? salesRows.map(([d, v]) => `
-        <tr><td>${d}</td><td>${v.orders}</td><td>${v.units}</td><td>${money(v.revenue)}</td></tr>
-      `).join('') : `<tr><td colspan="4" class="empty-state">No sales for selection.</td></tr>`;
-      
-      // Top products
-      const prodAgg = {};
-      for (const o of filteredOrders) {
-        for (const i of o.items) {
-          if (!prodAgg[i.name]) prodAgg[i.name] = {units: 0, revenue: 0};
-          prodAgg[i.name].units += i.qty;
-          prodAgg[i.name].revenue += i.qty * i.price;
+      const ordersResponse = await fetch('/api/orders');
+      if (ordersResponse.ok) {
+        const apiOrders = await ordersResponse.json();
+        if (apiOrders && apiOrders.length > 0) {
+          allOrders = apiOrders;
         }
       }
-      
-      const top = Object.entries(prodAgg).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 10);
-      $('#topProductsTable tbody').innerHTML = top.length ? top.map(([name, v]) => `
-        <tr><td>${name}</td><td>${v.units}</td><td>${money(v.revenue)}</td></tr>
-      `).join('') : `<tr><td colspan="3" class="empty-state">No data.</td></tr>`;
-      
-      // Customers
-      const cust = {};
-      for (const o of filteredOrders) {
-        const email = o.customer?.email || 'guest';
-        if (!cust[email]) cust[email] = {orders: 0, spend: 0};
-        cust[email].orders++;
-        cust[email].spend += o.total;
-      }
-      
-      const custRows = Object.entries(cust).sort((a, b) => b[1].spend - a[1].spend);
-      $('#customersTable tbody').innerHTML = custRows.length ? custRows.map(([email, v]) => `
-        <tr><td>${email}</td><td>${v.orders}</td><td>${money(v.spend)}</td></tr>
-      `).join('') : `<tr><td colspan="3" class="empty-state">No customers yet.</td></tr>`;
-      
-      // Simple chart placeholder
-      drawBarChart('#salesChart', salesRows.map(([d, v]) => ({label: d, value: v.revenue})), {height: 160});
-      
-    } catch (error) {
-      console.error('Error loading reports:', error);
-      $('#salesTable tbody').innerHTML = `<tr><td colspan="4" class="empty-state">Error loading data.</td></tr>`;
+    } catch (apiError) {
+      console.log('Using sample data due to API error:', apiError);
     }
+    
+  } catch (error) {
+    console.error('Error loading reports data:', error);
+    showToast('Error loading reports data');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function applyFilters() {
+  const statusFilter = document.getElementById('statusFilter').value;
+  
+  // Simple filtering for demo
+  filteredOrders = statusFilter 
+    ? allOrders.filter(order => order.status === statusFilter)
+    : [...allOrders];
+  
+  currentPage = 1;
+  
+  updateStats();
+  updateCharts();
+  renderOrdersTable();
+}
+
+function updateStats() {
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const totalOrders = filteredOrders.length;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  
+  document.getElementById('totalRevenue').textContent = `R ${totalRevenue.toFixed(2)}`;
+  document.getElementById('totalOrders').textContent = totalOrders;
+  document.getElementById('avgOrderValue').textContent = `R ${avgOrderValue.toFixed(2)}`;
+  document.getElementById('conversionRate').textContent = totalOrders > 0 ? '4.2%' : '0%';
+}
+
+function updateCharts() {
+  // Destroy existing charts if they exist
+  Object.values(chartInstances).forEach(chart => {
+    if (chart) chart.destroy();
+  });
+  
+  // Create sample charts
+  const revenueCtx = document.getElementById('revenueChart');
+  if (revenueCtx) {
+    chartInstances.revenueChart = new Chart(revenueCtx, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+          label: 'Revenue (ZAR)',
+          data: [12500, 19000, 18000, 22000, 21000, 25000],
+          borderColor: '#3498db',
+          backgroundColor: 'rgba(52, 152, 219, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      }
+    });
+  }
+}
+
+function renderOrdersTable() {
+  const tbody = document.getElementById('ordersTableBody');
+  
+  if (filteredOrders.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No orders match the selected filters</td></tr>';
+    document.getElementById('pagination').style.display = 'none';
+    return;
+  }
+  
+  // Simple rendering without pagination for demo
+  let tableHTML = '';
+  filteredOrders.forEach(order => {
+    const orderDate = new Date(order.created_at || Date.now());
+    const statusClass = `status-${order.status ? order.status.toLowerCase() : 'pending'}`;
+    
+    tableHTML += `
+      <tr>
+        <td>${order.id || 'ORD-' + Math.random().toString(36).substr(2, 8).toUpperCase()}</td>
+        <td>${orderDate.toLocaleDateString()}</td>
+        <td>${order.customer_name || 'Guest Customer'}</td>
+        <td>${order.items ? order.items.length : 1} items</td>
+        <td>R ${order.total ? order.total.toFixed(2) : '0.00'}</td>
+        <td><span class="status-badge ${statusClass}">${order.status || 'Pending'}</span></td>
+      </tr>
+    `;
+  });
+  
+  tbody.innerHTML = tableHTML;
+  document.getElementById('pagination').style.display = 'none'; // Hide pagination for demo
+}
+
+function changePage(direction) {
+  // Simplified for demo
+  console.log('Change page:', direction);
+}
+
+function exportToPdf() {
+  // Create a print-friendly version of the report
+  const printContent = document.createElement('div');
+  printContent.innerHTML = `
+    <h1>ForgeWorks Sales Report</h1>
+    <p>Generated: ${new Date().toLocaleDateString()}</p>
+    
+    <h2>Summary Statistics</h2>
+    <p>Total Revenue: R ${filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0).toFixed(2)}</p>
+    <p>Total Orders: ${filteredOrders.length}</p>
+    <p>Average Order Value: R ${(filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0) / (filteredOrders.length || 1)).toFixed(2)}</p>
+    
+    <h2>Order Details</h2>
+    <table border="1" style="width:100%; border-collapse:collapse;">
+      <tr>
+        <th>Order ID</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Items</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+      ${filteredOrders.map(order => `
+        <tr>
+          <td>${order.id || 'N/A'}</td>
+          <td>${new Date(order.created_at || order.createdAt).toLocaleDateString()}</td>
+          <td>${order.customer_name || 'Guest'}</td>
+          <td>${order.items ? order.items.length : 0}</td>
+          <td>R ${order.total ? order.total.toFixed(2) : '0.00'}</td>
+          <td>${order.status || 'Pending'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+  
+  // Open print dialog
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>ForgeWorks Sales Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+          @media print {
+            body { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  
+  // Wait for content to load then print
+  printWindow.onload = function() {
+    printWindow.print();
+    // printWindow.close(); // Uncomment to auto-close after printing
   };
   
-  $('#runReports').addEventListener('click', run);
-  run();
+  showToast('Opening print dialog...');
+}
+
+function exportToCsv() {
+  console.log("Exporting to CSV...");
+  
+  let csvContent = 'Order ID,Date,Customer,Items,Amount,Status\n';
+  
+  filteredOrders.forEach(order => {
+    const orderDate = new Date(order.created_at || Date.now());
+    csvContent += `"${order.id || ''}","${orderDate.toLocaleDateString()}","${order.customer_name || 'Guest'}","${order.items ? order.items.length : 1}","R ${order.total ? order.total.toFixed(2) : '0.00'}","${order.status || 'Pending'}"\n`;
+  });
+  
+  const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `forgeworks-report-${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showToast('CSV exported successfully!');
+}
+
+// Generate sample data for demo purposes
+function generateSampleOrdersData() {
+  return new Promise((resolve) => {
+    const statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+    const sampleOrders = [];
+    
+    for (let i = 0; i < 25; i++) {
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      const total = Math.random() * 1000 + 50;
+      const itemsCount = Math.floor(Math.random() * 5) + 1;
+      
+      sampleOrders.push({
+        id: 'ORD-' + (1000 + i),
+        customer_name: ['John Smith', 'Sarah Johnson', 'Mike Wilson', 'Emily Davis'][i % 4],
+        customer_email: ['john@example.com', 'sarah@example.com', 'mike@example.com', 'emily@example.com'][i % 4],
+        total: parseFloat(total.toFixed(2)),
+        status: status,
+        created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        items: Array(itemsCount).fill(0).map(() => ({ 
+          name: ['Chef Knife', 'Fire Poker', 'Axe', 'Bottle Opener'][Math.floor(Math.random() * 4)],
+          quantity: Math.floor(Math.random() * 3) + 1,
+          price: parseFloat((total / itemsCount).toFixed(2))
+        }))
+      });
+    }
+    
+    resolve(sampleOrders);
+  });
 }
 
 function drawBarChart(selector, data, {height = 160} = {}) {

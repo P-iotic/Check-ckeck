@@ -1,72 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
-  <title>ForgeWorks — Admin Products</title>
+  <title>ForgeWorks — Admin</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .tab-nav { display:flex; gap:1rem; margin:1rem 0; }
+    .tab-nav button { padding:.6rem 1rem; border:none; border-radius:6px; cursor:pointer; background:#333; color:#eee; }
+    .tab-nav button.active { background:#28a745; }
+    .tab-section { display:none; }
+    .tab-section.active { display:block; }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <div class="brand">ForgeWorks</div>
+      <div class="brand">ForgeWorks Admin</div>
       <nav class="topnav">
         <a href="index.html">Products</a>
-        <a href="account.html">Account</a>
-        <a href="admin.html">Admin</a>
-        <a href="suppliers.html">Suppliers</a>
-        <a href="reports.html">Reports</a>
-        <a href="checkout.html">Checkout</a>
+        <a href="account.html" data-role="customer">Account</a>
+        <a href="admin.html" data-role="admin" class="active">Admin</a>
+        <a href="suppliers.html" data-role="admin supplier">Suppliers</a>
+        <a href="reports.html" data-role="admin">Reports</a>
+        <a href="checkout.html" data-role="customer">Checkout</a>
       </nav>
     </div>
   </header>
 
-  <main class="container">
-    <h2>Product Management</h2>
-    <form id="productForm" class="container" style="max-width:720px; padding:0;">
-      <input type="hidden" id="prodId" />
-      <div class="form-group">
-        <label>Name</label>
-        <input id="prodName" class="input" required />
-        <div class="error" id="eProdName"></div>
-      </div>
-      <div class="form-group">
-        <label>Price (ZAR)</label>
-        <input id="prodPrice" class="input" type="number" step="0.01" min="0" required />
-        <div class="error" id="eProdPrice"></div>
-      </div>
-      <div class="form-group">
-        <label>Category</label>
-        <input id="prodCategory" class="input" />
-      </div>
-      <div class="form-group">
-        <label>Image URL</label>
-        <input id="prodImage" class="input" placeholder="images/your-file.jpg" />
-      </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea id="prodDesc" class="input" rows="3"></textarea>
-      </div>
-      <button class="button-primary" type="submit">Save Product</button>
-    </form>
+  <div id="userIcon"></div>
 
-    <h3 style="margin-top:2rem;">Products</h3>
-    <div class="table-wrap">
-      <table id="adminProductsTable">
-        <thead>
-          <tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Image</th><th>Actions</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+  <main class="container">
+    <h2>Admin Panel</h2>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="products">Products</button>
+      <button class="tab-btn" data-tab="users">Users</button>
+      <button class="tab-btn" data-tab="orders">Orders</button>
     </div>
+
+    <!-- Dashboard Section -->
+    <section id="dashboard" class="tab-section active">
+      <h3>Overview</h3>
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <div class="stat-value" id="totalRevenue">R 0.00</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalOrders">0</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalProducts">0</div>
+          <div class="stat-label">Products</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalUsers">0</div>
+          <div class="stat-label">Users</div>
+        </div>
+      </div>
+
+      <div class="dashboard-row">
+        <div class="dashboard-col">
+          <div class="dashboard-card">
+            <h3>Revenue Overview</h3>
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+        <div class="dashboard-col">
+          <div class="dashboard-card">
+            <h3>Top Products</h3>
+            <canvas id="productsChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Products Section -->
+    <section id="products" class="tab-section">
+      <h3>Product Management</h3>
+      <form id="productForm" style="max-width:720px;">
+        <input type="hidden" id="prodId" />
+        <div class="form-group">
+          <label>Name</label>
+          <input id="prodName" class="input" required />
+          <div class="error" id="eProdName"></div>
+        </div>
+        <div class="form-group">
+          <label>Price (ZAR)</label>
+          <input id="prodPrice" class="input" type="number" step="0.01" min="0" required />
+          <div class="error" id="eProdPrice"></div>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input id="prodCategory" class="input" />
+        </div>
+        <div class="form-group">
+          <label>Image URL</label>
+          <input id="prodImage" class="input" placeholder="images/your-file.jpg" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="prodDesc" class="input" rows="3"></textarea>
+        </div>
+        <button class="button-primary" type="submit">Save Product</button>
+      </form>
+
+      <h3 style="margin-top:2rem;">Products</h3>
+      <div class="table-wrap">
+        <table id="adminProductsTable">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Image</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Users Section -->
+    <section id="users" class="tab-section">
+      <h3>User Management</h3>
+      <button class="button-primary" id="addUserBtn">Add User</button>
+      <div class="table-wrap">
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Orders Section -->
+    <section id="orders" class="tab-section">
+      <h3>Recent Orders</h3>
+      <div class="table-wrap">
+        <table id="recentOrdersTable">
+          <thead>
+            <tr>
+              <th>Order ID</th><th>Customer</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
   </main>
+
+  <!-- User Modal -->
+  <div id="userModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add New User</h3>
+        <span class="close">&times;</span>
+      </div>
+      <form id="userForm" class="modal-body">
+        <input type="hidden" id="userId">
+        <div class="form-group"><label>Name</label><input type="text" id="userName" class="input" required></div>
+        <div class="form-group"><label>Email</label><input type="email" id="userEmail" class="input" required></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="userPhone" class="input"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="userPassword" class="input"></div>
+        <div class="form-actions">
+          <button type="button" class="button-primary" id="cancelUserBtn">Cancel</button>
+          <button type="submit" class="button-primary">Save User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Order Modal -->
+  <div id="orderModal" class="modal">
+    <div class="modal-content wide">
+      <div class="modal-header">
+        <h3>Order Details - <span id="orderIdTitle"></span></h3>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="order-section">
+          <h4>Customer Info</h4><div id="orderCustomerInfo"></div>
+        </div>
+        <div class="order-section">
+          <h4>Items</h4>
+          <table id="orderItemsTable"><thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="order-section">
+          <h4>Summary</h4><div id="orderSummary"></div>
+        </div>
+        <div class="order-section">
+          <h4>Update Status</h4>
+          <select id="orderStatusSelect" class="input">
+            <option value="Pending">Pending</option>
+            <option value="Processing">Processing</option>
+            <option value="Shipped">Shipped</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <button class="button-primary" id="updateStatusBtn">Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="toast"></div>
   <div id="spinnerOverlay"><div class="spinner"></div></div>
 
   <script src="script.js"></script>
   <script>
+    initUserIcon();
+    initCartIcon();
     bootstrapData();
+    initAdminDashboard();
     initAdminProducts();
+
+    // tab logic
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-section").forEach(sec => sec.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+      // Load orders into the admin "Recent Orders" table
+    async function loadRecentOrders() {
+      try {
+        const res = await fetch("/api/orders");
+        const orders = await res.json();
+        const tbody = document.querySelector("#recentOrdersTable tbody");
+        tbody.innerHTML = "";
+
+        if (!orders.length) {
+          tbody.innerHTML = `<tr><td colspan="6">No orders found</td></tr>`;
+          return;
+        }
+
+        orders.forEach(order => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${order.orderId}</td>
+            <td>${order.customer || "Guest"}</td>
+            <td>${new Date(order.date).toLocaleDateString()}</td>
+            <td>R ${parseFloat(order.amount).toFixed(2)}</td>
+            <td>${order.status}</td>
+            <td><button class="button-primary" onclick="viewOrder(${order.orderId})">View</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+      }
+    }
+
+    function viewOrder(orderId) {
+      // open modal and load details
+      document.getElementById("orderIdTitle").textContent = orderId;
+      document.getElementById("orderModal").style.display = "block";
+      // TODO: fetch more details per order if needed
+    }
+
+    // Call it when page loads
+    loadRecentOrders();
   </script>
+    <script>
+    // Check authentication on page load - ONLY allow admin users
+    document.addEventListener("DOMContentLoaded", function() {
+      const user = getJSON(LS_KEYS.USER);
+      if (!user || user.role !== 'admin') {
+        showToast("Admin access required");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Only initialize if user is authenticated as admin
+      initUserIcon();
+      initCartIcon();
+      bootstrapData();
+      
+      // Your admin page initialization code here
+    });
+</script>
 </body>
 </html>

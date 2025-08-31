@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
-  <title>ForgeWorks — Suppliers</title>
+  <title>ForgeWorks — Supplier Products</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -10,46 +11,47 @@
     <div class="header-inner">
       <div class="brand">ForgeWorks</div>
       <nav class="topnav">
-        <a href="index.html">Products</a>
-        <a href="account.html">Account</a>
-        <a href="admin.html">Admin</a>
-        <a href="suppliers.html">Suppliers</a>
-        <a href="reports.html">Reports</a>
-        <a href="checkout.html">Checkout</a>
+          <a href="index.html">Products</a>
+          <a href="suppliers.html" data-role="admin supplier">Suppliers</a>
+          <a href="checkout.html" data-role="customer">Checkout</a>
       </nav>
     </div>
   </header>
 
   <main class="container">
-    <h2>Supplier Management</h2>
-    <form id="supplierForm" class="container" style="max-width:720px; padding:0;">
-      <input type="hidden" id="supId" />
+    <h2>Supplier Product Management</h2>
+    <form id="productForm" class="container" style="max-width:720px; padding:0;">
+      <input type="hidden" id="prodId" />
       <div class="form-group">
-        <label>Supplier Name</label>
-        <input id="supName" class="input" required />
-        <div class="error" id="eSupName"></div>
+        <label>Name</label>
+        <input id="prodName" class="input" required />
+        <div class="error" id="eProdName"></div>
       </div>
       <div class="form-group">
-        <label>Contact Email</label>
-        <input id="supEmail" class="input" type="email" />
-        <div class="error" id="eSupEmail"></div>
+        <label>Price (ZAR)</label>
+        <input id="prodPrice" class="input" type="number" step="0.01" min="0" required />
+        <div class="error" id="eProdPrice"></div>
       </div>
       <div class="form-group">
-        <label>Materials (comma separated)</label>
-        <input id="supMaterials" class="input" />
+        <label>Category</label>
+        <input id="prodCategory" class="input" />
       </div>
       <div class="form-group">
-        <label>Lead Time (days)</label>
-        <input id="supLead" class="input" type="number" min="0" />
+        <label>Image URL</label>
+        <input id="prodImage" class="input" placeholder="images/your-file.jpg" />
       </div>
-      <button class="button-primary" type="submit">Save Supplier</button>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="prodDesc" class="input" rows="3"></textarea>
+      </div>
+      <button class="button-primary" type="submit">Save Product</button>
     </form>
 
-    <h3 style="margin-top:2rem;">Suppliers</h3>
+    <h3 style="margin-top:2rem;">Current Products</h3>
     <div class="table-wrap">
-      <table id="suppliersTable">
+      <table id="adminProductsTable">
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Email</th><th>Materials</th><th>Lead Time</th><th>Actions</th></tr>
+          <tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Image</th><th>Actions</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -62,7 +64,25 @@
   <script src="script.js"></script>
   <script>
     bootstrapData();
-    initSuppliersPage();
+    initAdminProducts();
+  </script>
+  <script>
+    // Check authentication on page load
+    document.addEventListener("DOMContentLoaded", function() {
+      const user = getJSON(LS_KEYS.USER);
+      if (!user || (user.role !== 'supplier' && user.role !== 'admin')) {
+        showToast("Supplier access required");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Only initialize if user has supplier or admin role
+      initUserIcon();
+      initCartIcon();
+      bootstrapData();
+      
+      // Your supplier page initialization code here
+    });
   </script>
 </body>
 </html>

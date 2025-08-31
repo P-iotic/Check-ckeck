@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>ForgeWorks — Order Tracking</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">ForgeWorks</div>
+      <nav class="topnav">
+        <a href="index.html">Products</a>
+        <a href="account.html">Account</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Your Order Tracking</h2>
+    <div id="trackingDetails" class="fade-in">
+      <div id="orderDetails">Loading order details...</div>
+    </div>
+    <button class="button-primary" onclick="location.href='account.html'">Go to My Account</button>
+  </main>
+
+  <div id="toast"></div>
+  <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+  <script src="script.js"></script>
+  <script>
+    initUserIcon();
+    bootstrapData();
+    initTrackingPage();
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get('orderId');
+      
+      if (!orderId) {
+        document.getElementById('orderDetails').innerHTML = '<div class="empty-state">No order ID provided. <a href="account.html">Go to account</a></div>';
+        return;
+      }
+      
+      document.getElementById('spinnerOverlay').style.display = 'flex';
+      
+      try {
+        const res = await fetch(`/api/orders/${orderId}`);
+        if (!res.ok) throw new Error('Failed to fetch order');
+        
+        const o = await res.json();
+        
+        // Format date
+        const orderDate = new Date(o.created_at).toLocaleString();
+        
+        // Status badge class
+        const statusClass = `status-${o.status.toLowerCase()}`;
+        
+        document.getElementById('orderDetails').innerHTML = `
+          <div class="order-section">
+            <h3>Order #${o.id}</h3>
+            <p><strong>Date:</strong> ${orderDate}</p>
+            <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${o.status}</span></p>
+            <p><strong>Total:</strong> ${money(o.total)}</p>
+          </div>
+          
+          <div class="order-section">
+            <h4>Shipping Information</h4>
+            <p><strong>Name:</strong> ${o.customer_name}</p>
+            <p><strong>Email:</strong> ${o.customer_email}</p>
+            <p><strong>Phone:</strong> ${o.customer_phone || 'N/A'}</p>
+            <p><strong>Address:</strong> ${o.customer_address || 'N/A'}</p>
+            <p><strong>Delivery:</strong> ${o.delivery_option}</p>
+          </div>
+          
+          <div class="order-section">
+            <h4>Order Items</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
+                <tbody>
+                  ${o.items.map(i => `
+                    <tr>
+                      <td>${i.name}</td>
+                      <td>${money(i.price)}</td>
+                      <td>${i.qty}</td>
+                      <td>${money(i.price * i.qty)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error loading order:', error);
+        document.getElementById('orderDetails').innerHTML = '<div class="empty-state">Error loading order. Try again later.</div>';
+      } finally {
+        document.getElementById('spinnerOverlay').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

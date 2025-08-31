@@ -641,3 +641,228 @@ th { background: #0d0d0d; color: var(--text); }
         gap: 1rem;
     }
 }
+
+/* Chart container fixes */
+.dashboard-card canvas {
+    max-height: 250px;
+    width: 100% !important;
+    height: 250px !important;
+}
+
+.dashboard-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.dashboard-col {
+    flex: 1;
+    min-width: 300px;
+    max-width: 50%;
+}
+
+/* Ensure chart containers have fixed height */
+#revenueChart, #productsChart {
+    height: 250px !important;
+    width: 100% !important;
+}
+
+/* Auth Styles */
+.auth-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* User menu styles */
+.user-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.user-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  min-width: 200px;
+  display: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.user-menu:hover .user-dropdown {
+  display: block;
+}
+
+.user-info {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.user-dropdown a, .user-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.user-dropdown a:hover, .user-dropdown button:hover {
+  color: var(--accent);
+}
+
+.auth-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 1rem;
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+.auth-tab:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-tab.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+}
+
+.auth-form {
+    padding: 2rem;
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
+}
+
+.auth-form h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Update user icon to show login state */
+#userIcon a::before {
+    content: "⚪"; /* Default icon for logged out */
+}
+
+.user-logged-in #userIcon a::before {
+    content: "🟢"; /* Green dot for logged in */
+}
+
+/* Ensure images display properly */
+.product-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Fallback for broken images */
+img[src=""], img:not([src]) {
+  opacity: 0;
+}
+
+img {
+  transition: opacity 0.3s ease;
+}
+
+/* Form validation styles */
+.input.valid {
+    border-color: var(--success);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.input.invalid {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.2);
+}
+
+.error {
+    color: var(--danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    min-height: 1.2rem;
+}
+
+/* Payment input specific styles */
+#cardNumber, #cardExpiry, #cardCvc {
+    font-family: monospace;
+}
+
+/* Visual feedback for focus */
+.input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Delivery option styling */
+#chkDelivery {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem;
+    width: 100%;
+}
+
+#chkDelivery option {
+    background: var(--panel);
+    color: var(--text);
+}
+
+/* Responsive form adjustments */
+@media (max-width: 768px) {
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .input {
+        padding: 0.75rem;
+    }
+}

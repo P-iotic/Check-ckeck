@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ForgeWorks — Login</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="brand">ForgeWorks</div>
+            <nav class="topnav">
+                <a href="index.html">Products</a>
+                <a href="login.html" class="active">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Login</button>
+                <button class="auth-tab" data-tab="register">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+                <h2>Login to Your Account</h2>
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" class="input" required />
+                    <div class="error" id="loginEmailError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="input" required />
+                    <div class="error" id="loginPasswordError"></div>
+                </div>
+                <button type="submit" class="button-primary">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form">
+                <h2>Create New Account</h2>
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" class="input" required />
+                    <div class="error" id="registerNameError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" class="input" required />
+                    <div class="error" id="registerEmailError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPhone">Phone (Optional)</label>
+                    <input type="text" id="registerPhone" class="input" />
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" class="input" required />
+                    <div class="error" id="registerPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" class="input" required />
+                    <div class="error" id="registerConfirmPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isSupplier"> I am a supplier
+                    </label>
+                </div>
+                <button type="submit" class="button-primary">Register</button>
+            </form>
+
+            <!-- Test Registration Section -->
+            <div style="border: 1px solid var(--border); padding: 1rem; margin-top: 2rem; border-radius: 8px;">
+                <h3>Test Registration (Debug)</h3>
+                <div class="form-group">
+                    <input type="text" id="testName" class="input" placeholder="Test Name">
+                </div>
+                <div class="form-group">
+                    <input type="email" id="testEmail" class="input" placeholder="Test Email">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="testPassword" class="input" placeholder="Test Password">
+                </div>
+                <button class="button-primary" onclick="testRegister()">Test Register</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast"></div>
+    <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+    <script src="script.js"></script>
+    <script>
+        // Initialize auth tabs
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auth tab functionality
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.dataset.tab;
+                    
+                    // Update active tab
+                    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Show correct form
+                    document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+                    document.getElementById(`${tabName}Form`).classList.add('active');
+                });
+            });
+
+            // Initialize supplier checkbox
+            const isSupplierCheckbox = document.getElementById('isSupplier');
+            if (isSupplierCheckbox) {
+                isSupplierCheckbox.checked = false;
+            }
+        });
+
+        // Login form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                showSpinner(true);
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store user data in localStorage
+                    localStorage.setItem('fw_user', JSON.stringify({
+                        id: data.id,
+                        name: data.name,
+                        email: data.email,
+                        phone: data.phone,
+                        role: data.role,
+                        token: data.token
+                    }));
+                    
+                    showToast('Login successful!');
+                    
+                    // Redirect based on role
+                    setTimeout(() => {
+                        if (data.role === 'admin') {
+                            window.location.href = 'admin-dashboard.html';
+                        } else if (data.role === 'supplier') {
+                            window.location.href = 'suppliers.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }, 1000);
+                } else {
+                    showToast(data.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('Login failed. Please try again.');
+            } finally {
+                showSpinner(false);
+            }
+        });
+
+        // Register form submission
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const phone = document.getElementById('registerPhone').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const isSupplier = document.getElementById('isSupplier').checked;
+            const role = isSupplier ? 'supplier' : 'customer';
+            
+            console.log('Registration attempt:', { name, email, phone, password, role });
+            
+            // Basic validation
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters');
+                return;
+            }
+            
+            try {
+                showSpinner(true);
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, phone, password, role }),
+                });
+                
+                console.log('Registration response status:', response.status);
+                
+                const data = await response.json();
+                console.log('Registration response data:', data);
+                
+                if (response.ok) {
+                    showToast('Registration successful! Please login.');
+                    // Switch to login tab
+                    document.querySelector('[data-tab="login"]').click();
+                    // Pre-fill email
+                    document.getElementById('loginEmail').value = email;
+                } else {
+                    showToast(data.error || 'Registration failed');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showToast('Registration failed. Please try again.');
+            } finally {
+                showSpinner(false);
+            }
+        });
+
+        // Test registration function
+        async function testRegister() {
+            const name = document.getElementById('testName').value || 'Test User';
+            const email = document.getElementById('testEmail').value || 'test@example.com';
+            const password = document.getElementById('testPassword').value || 'password123';
+            
+            try {
+                showSpinner(true);
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, password, role: 'customer' }),
+                });
+                
+                const data = await response.json();
+                console.log('Test registration result:', data);
+                
+                if (response.ok) {
+                    showToast('Test registration successful!');
+                    document.getElementById('loginEmail').value = email;
+                    document.querySelector('[data-tab="login"]').click();
+                } else {
+                    showToast('Test failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Test registration error:', error);
+                showToast('Test failed: ' + error.message);
+            } finally {
+                showSpinner(false);
+            }
+        }
+    </script>
+</body>
+</html>

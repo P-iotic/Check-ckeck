@@ -200,7 +200,13 @@ function addToCart(id, qty = 1) {
   
   setJSON(LS_KEYS.CART, cart);
   updateCartCount();
-  showToast(`Added ${qty} × ${product.name}`);
+  
+  // Add help prompt for first-time users
+  if (cart.length === 1) {
+    showToast(`Added to cart! <a href="help.html#cartHelp" style="color: #fff; text-decoration: underline;">Need help?</a>`, 4000);
+  } else {
+    showToast(`Added ${qty} × ${product.name}`);
+  }
 }
 
 /****************************************************

@@ -13,6 +13,7 @@
             <nav class="topnav">
                 <a href="index.html">Products</a>
                 <a href="login.html" class="active">Login</a>
+                <a href="help.html" style="margin-left: auto;">Help</a>
             </nav>
         </div>
     </header>
@@ -156,7 +157,7 @@
                     // Redirect based on role
                     setTimeout(() => {
                         if (data.role === 'admin') {
-                            window.location.href = 'admin-dashboard.html';
+                            window.location.href = 'admin.html';
                         } else if (data.role === 'supplier') {
                             window.location.href = 'suppliers.html';
                         } else {
@@ -265,5 +266,6 @@
             }
         }
     </script>
-</body>
+        <a href="help.html" class="help-button" title="Help">?</a>
+    </body>
 </html>

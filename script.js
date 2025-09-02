@@ -1,7 +1,7 @@
 /********************
  * Data bootstrap *
  ********************/
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3002/api';
 const LS_KEYS = {
   PRODUCTS: 'fw_products',
   CART: 'fw_cart',
@@ -1592,6 +1592,68 @@ function applyFilters() {
   updateCharts();
   renderOrdersTable();
 }
+
+function migrateOrderData() {
+  const orders = JSON.parse(localStorage.getItem('fw_orders') || '[]');
+  console.log('Found orders to migrate:', orders.length);
+  
+  if (orders.length === 0) {
+    console.log('No orders found to migrate');
+    return [];
+  }
+  
+  const migratedOrders = orders.map((order, index) => {
+    console.log(`Processing order ${index}:`, order);
+    
+    // If order has old structure (customer object), migrate it
+    if (order.customer && typeof order.customer === 'object') {
+      console.log(`Migrating order ${index} from old structure`);
+      return {
+        id: order.id || `ORD-${Date.now()}-${index}`,
+        customer_name: order.customer.name || 'Guest',
+        customer_email: order.customer.email || '',
+        customer_phone: order.customer.phone || '',
+        customer_address: order.customer.address || '',
+        delivery_option: order.customer.delivery || 'Standard',
+        total: order.total || 0,
+        status: order.status || 'Pending',
+        created_at: order.createdAt || order.created_at || new Date().toISOString(),
+        items: order.items || []
+      };
+    }
+    
+    // If order already has new structure but missing some fields, fill them in
+    if (!order.customer_name && order.customer_name !== '') {
+      console.log(`Fixing incomplete order ${index}`);
+      return {
+        id: order.id || order.orderId || `ORD-${Date.now()}-${index}`,
+        customer_name: order.customer_name || 'Guest',
+        customer_email: order.customer_email || '',
+        customer_phone: order.customer_phone || '',
+        customer_address: order.customer_address || '',
+        delivery_option: order.delivery_option || 'Standard',
+        total: order.total || order.amount || 0,
+        status: order.status || 'Pending',
+        created_at: order.created_at || order.createdAt || order.date || new Date().toISOString(),
+        items: order.items || []
+      };
+    }
+    
+    // If order already has new structure, keep it
+    console.log(`Order ${index} already has new structure`);
+    return order;
+  });
+  
+  console.log('Migrated orders:', migratedOrders);
+  localStorage.setItem('fw_orders', JSON.stringify(migratedOrders));
+  return migratedOrders;
+}
+
+// Call this function in your admin page
+document.addEventListener("DOMContentLoaded", function() {
+  migrateOrderData();
+  loadRecentOrders();
+});
 
 function updateStats() {
   const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0);

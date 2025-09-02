@@ -8,6 +8,11 @@ const { hashPassword, verifyPassword, generateToken, requireAuth } = require('./
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+const fs = require('fs');
+if (process.env.RENDER && !fs.existsSync('/data/forgeworks.db')) {
+  fs.copyFileSync('./forgeworks.db', '/data/forgeworks.db');
+}
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());

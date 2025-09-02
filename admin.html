@@ -12,6 +12,28 @@
     .tab-nav button.active { background:#28a745; }
     .tab-section { display:none; }
     .tab-section.active { display:block; }
+    .help-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      transition: transform 0.3s ease;
+    }
+    .help-button:hover {
+      transform: scale(1.1);
+    }
   </style>
 </head>
 <body>
@@ -31,6 +53,7 @@
   </header>
 
   <div id="userIcon"></div>
+  <div id="cartIcon"></div>
 
   <main class="container">
     <h2>Admin Panel</h2>
@@ -213,66 +236,13 @@
 
   <script src="script.js"></script>
   <script>
-    initUserIcon();
-    initCartIcon();
-    bootstrapData();
-    initAdminDashboard();
-    initAdminProducts();
+    // Store current order ID for update operations
+    let currentOrderId = null;
 
-    // tab logic
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-section").forEach(sec => sec.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById(btn.dataset.tab).classList.add("active");
-      });
-    });
-      // Load orders into the admin "Recent Orders" table
-    async function loadRecentOrders() {
-      try {
-        const res = await fetch("/api/orders");
-        const orders = await res.json();
-        const tbody = document.querySelector("#recentOrdersTable tbody");
-        tbody.innerHTML = "";
-
-        if (!orders.length) {
-          tbody.innerHTML = `<tr><td colspan="6">No orders found</td></tr>`;
-          return;
-        }
-
-        orders.forEach(order => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${order.orderId}</td>
-            <td>${order.customer || "Guest"}</td>
-            <td>${new Date(order.date).toLocaleDateString()}</td>
-            <td>R ${parseFloat(order.amount).toFixed(2)}</td>
-            <td>${order.status}</td>
-            <td><button class="button-primary" onclick="viewOrder(${order.orderId})">View</button></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-      }
-    }
-
-    function viewOrder(orderId) {
-      // open modal and load details
-      document.getElementById("orderIdTitle").textContent = orderId;
-      document.getElementById("orderModal").style.display = "block";
-      // TODO: fetch more details per order if needed
-    }
-
-    // Call it when page loads
-    loadRecentOrders();
-  </script>
-    <script>
     // Check authentication on page load - ONLY allow admin users
     document.addEventListener("DOMContentLoaded", function() {
-      const user = getJSON(LS_KEYS.USER);
-      if (!user || user.role !== 'admin') {
+      const user = JSON.parse(localStorage.getItem("fw_user") || "{}");
+      if (!user.id || user.role !== 'admin') {
         showToast("Admin access required");
         window.location.href = "login.html";
         return;
@@ -283,10 +253,327 @@
       initCartIcon();
       bootstrapData();
       
-      // Your admin page initialization code here
+      // Migrate order data first, then load orders
+      if (typeof migrateOrderData !== 'undefined') {
+        migrateOrderData();
+      } else {
+        console.log("migrateOrderData function not found, loading orders directly");
+      }
+      loadRecentOrders();
+      
+      // Initialize admin features
+      if (typeof initAdminDashboard !== 'undefined') initAdminDashboard();
+      if (typeof initAdminProducts !== 'undefined') initAdminProducts();
+
+      // Set up modal close handlers
+      setupModalHandlers();
+
+      // tab logic
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".tab-section").forEach(sec => sec.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(btn.dataset.tab).classList.add("active");
+          
+          // If orders tab is clicked, refresh the orders
+          if (btn.dataset.tab === 'orders') {
+            loadRecentOrders();
+          }
+        });
+      });
     });
-    </script>
-    <!-- Floating help button -->
-    <a href="help.html" class="help-button" title="Help">?</a>
-  </body>
+
+    // Set up modal close handlers
+    function setupModalHandlers() {
+      // Close modal when clicking on X
+      document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', closeModals);
+      });
+      
+      // Close modal when clicking outside of it
+      window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+          closeModals();
+        }
+      });
+      
+      // Set up update status button handler
+      document.getElementById('updateStatusBtn').addEventListener('click', updateOrderStatus);
+    }
+    
+    // Close all modals
+    function closeModals() {
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
+      currentOrderId = null;
+    }
+
+    // Load orders into the admin "Recent Orders" table
+    async function loadRecentOrders() {
+      try {
+        // Try to get orders from API first, then fallback to localStorage
+        let orders = [];
+        
+        try {
+          const res = await fetch("/api/orders");
+          if (res.ok) {
+            orders = await res.json();
+          }
+        } catch (apiError) {
+          console.log("API not available, using localStorage", apiError);
+          orders = JSON.parse(localStorage.getItem("fw_orders") || "[]");
+        }
+
+        const tbody = document.querySelector("#recentOrdersTable tbody");
+        if (!tbody) return;
+        
+        tbody.innerHTML = "";
+
+        if (!orders.length) {
+          tbody.innerHTML = '<tr><td colspan="6">No orders found</td></tr>';
+          return;
+        }
+
+        orders.forEach(order => {
+          const tr = document.createElement("tr");
+          
+          // Extract order data with proper fallbacks
+          const orderId = order.id || order.orderId || "N/A";
+          const customerName = order.customer_name || 
+                              (order.customer && order.customer.name) || 
+                              "Guest";
+          const orderDate = order.created_at || order.createdAt || order.date || Date.now();
+          const orderAmount = order.total || order.amount || 0;
+          const orderStatus = order.status || "Pending";
+          
+          tr.innerHTML = `
+            <td>${orderId}</td>
+            <td>${customerName}</td>
+            <td>${new Date(orderDate).toLocaleDateString()}</td>
+            <td>R ${parseFloat(orderAmount).toFixed(2)}</td>
+            <td>${orderStatus}</td>
+            <td><button class="button-primary btn-sm view-order" data-id="${orderId}">View</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Add event listeners to view buttons
+        tbody.querySelectorAll('.view-order').forEach(btn => {
+          btn.addEventListener('click', () => viewOrder(btn.dataset.id));
+        });
+        
+      } catch (err) {
+        console.error("Error loading orders:", err);
+        const tbody = document.querySelector("#recentOrdersTable tbody");
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="6">Error loading orders</td></tr>';
+        }
+      }
+    }
+
+    async function viewOrder(orderId) {
+      showSpinner(true);
+      
+      try {
+        let order = null;
+        
+        // Try to get from API first
+        try {
+          const res = await fetch(`/api/orders/${orderId}`);
+          if (res.ok) {
+            order = await res.json();
+          }
+        } catch (apiError) {
+          console.log("API not available, using localStorage", apiError);
+          const orders = JSON.parse(localStorage.getItem("fw_orders") || "[]");
+          order = orders.find(o => o.id === orderId || o.orderId === orderId);
+        }
+        
+        if (!order) {
+          showToast("Order not found");
+          return;
+        }
+        
+        // Store the current order ID for updates
+        currentOrderId = orderId;
+        console.log("Viewing order:", orderId, "Full order data:", order);
+        
+        // Populate order modal with proper fallbacks
+        document.getElementById("orderIdTitle").textContent = orderId;
+        
+        const customerName = order.customer_name || (order.customer && order.customer.name) || "Guest";
+        const customerEmail = order.customer_email || (order.customer && order.customer.email) || "N/A";
+        const customerPhone = order.customer_phone || (order.customer && order.customer.phone) || "N/A";
+        const customerAddress = order.customer_address || (order.customer && order.customer.address) || "N/A";
+        const deliveryOption = order.delivery_option || (order.customer && order.customer.delivery) || "Standard";
+        
+        document.getElementById("orderCustomerInfo").innerHTML = `
+          <p><strong>Name:</strong> ${customerName}</p>
+          <p><strong>Email:</strong> ${customerEmail}</p>
+          <p><strong>Phone:</strong> ${customerPhone}</p>
+          <p><strong>Address:</strong> ${customerAddress}</p>
+          <p><strong>Delivery:</strong> ${deliveryOption}</p>
+        `;
+        
+        // Populate order items
+        const itemsTbody = document.querySelector("#orderItemsTable tbody");
+        itemsTbody.innerHTML = "";
+        
+        if (order.items && order.items.length) {
+          order.items.forEach(item => {
+            const tr = document.createElement("tr");
+            const itemName = item.name || "Unknown Product";
+            const itemPrice = item.price || 0;
+            const itemQty = item.quantity || item.qty || 0;
+            
+            tr.innerHTML = `
+              <td>${itemName}</td>
+              <td>R ${itemPrice.toFixed(2)}</td>
+              <td>${itemQty}</td>
+              <td>R ${(itemPrice * itemQty).toFixed(2)}</td>
+            `;
+            itemsTbody.appendChild(tr);
+          });
+        }
+        
+        // Populate order summary
+        const orderDate = order.created_at || order.createdAt || new Date();
+        const orderTotal = order.total || 0;
+        const subtotal = orderTotal - 79; // Assuming R79 shipping
+        
+        document.getElementById("orderSummary").innerHTML = `
+          <p><strong>Subtotal:</strong> R ${subtotal.toFixed(2)}</p>
+          <p><strong>Shipping:</strong> R 79.00</p>
+          <p><strong>Total:</strong> R ${orderTotal.toFixed(2)}</p>
+          <p><strong>Order Date:</strong> ${new Date(orderDate).toLocaleString()}</p>
+        `;
+        
+        // Set current status
+        document.getElementById("orderStatusSelect").value = order.status || "Pending";
+        
+        // Show modal
+        document.getElementById("orderModal").style.display = "block";
+        
+      } catch (error) {
+        console.error("Error loading order:", error);
+        showToast("Error loading order details");
+      } finally {
+        showSpinner(false);
+      }
+    }
+
+    function updateOrderStatus() {
+      if (!currentOrderId) {
+        showToast("No order selected");
+        return;
+      }
+      
+      const newStatus = document.getElementById("orderStatusSelect").value;
+      console.log("Updating order:", currentOrderId, "to status:", newStatus);
+      
+      // Get orders from localStorage
+      const orders = JSON.parse(localStorage.getItem("fw_orders") || "[]");
+      console.log("All orders in localStorage:", orders);
+      
+      // Find the order by ID - check both id and orderId properties
+      const orderIndex = orders.findIndex(o => 
+        (o.id === currentOrderId) || (o.orderId === currentOrderId)
+      );
+      
+      console.log("Found order index:", orderIndex);
+      
+      if (orderIndex !== -1) {
+        // Update the order status
+        orders[orderIndex].status = newStatus;
+        localStorage.setItem("fw_orders", JSON.stringify(orders));
+        
+        console.log("Order updated successfully:", orders[orderIndex]);
+        showToast("Order status updated successfully");
+        
+        // Also try to update via API if available
+        try {
+          fetch(`/api/orders/${currentOrderId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus })
+          }).then(response => {
+            if (!response.ok) {
+              console.log("API update failed");
+            }
+          }).catch(error => {
+            console.log("API update error", error);
+          });
+        } catch (error) {
+          console.log("API update attempt failed", error);
+        }
+        
+        // Refresh the orders table
+        loadRecentOrders();
+        
+        // Close the modal after a short delay
+        setTimeout(() => {
+          closeModals();
+        }, 1000);
+        
+      } else {
+        console.error("Order not found in localStorage. CurrentOrderId:", currentOrderId);
+        showToast("Error: Order not found in database");
+      }
+    }
+
+    // Create test orders if none exist (for testing)
+    function createTestOrders() {
+      const testOrders = [
+        {
+          id: "ORD-1001",
+          customer_name: "John Smith",
+          customer_email: "john@example.com",
+          customer_phone: "+27 82 123 4567",
+          customer_address: "123 Main St, Johannesburg",
+          delivery_option: "Express",
+          total: 1299.00,
+          status: "Processing",
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          items: [
+            { name: "Hand-Forged Chef Knife", price: 1299.00, quantity: 1 }
+          ]
+        },
+        {
+          id: "ORD-1002", 
+          customer_name: "Sarah Johnson",
+          customer_email: "sarah@example.com", 
+          customer_phone: "+27 83 456 7890",
+          customer_address: "456 Oak Ave, Cape Town",
+          delivery_option: "Standard",
+          total: 2387.00,
+          status: "Shipped",
+          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          items: [
+            { name: "Paring Knife", price: 599.00, quantity: 1 },
+            { name: "Custom Fire Poker", price: 349.00, quantity: 2 }
+          ]
+        }
+      ];
+      
+      localStorage.setItem("fw_orders", JSON.stringify(testOrders));
+      console.log("Test orders created");
+      return testOrders;
+    }
+
+    // Debug function to check localStorage contents
+    function debugOrders() {
+      const orders = JSON.parse(localStorage.getItem("fw_orders") || "[]");
+      console.log("Orders in localStorage:", orders);
+      console.log("Current order ID:", currentOrderId);
+      return orders;
+    }
+  </script>
+
+  <!-- Floating help button -->
+  <a href="help.html" class="help-button" title="Help">?</a>
+</body>
 </html>
